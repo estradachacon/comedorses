@@ -8,101 +8,26 @@ class Permisos extends BaseConfig
 {
     public array $modulos = [
 
-        'Ventas' => [
-            'cargar_facturas',
-            'ver_facturas',
-            'ver_documentos_todos_vendedores',
-            'ver_clientes',
-            'crear_clientes',
-            'editar_clientes',
-            'eliminar_clientes',
-            'anular_factura',
-            'ver_tipo_venta',
-            'crear_tipo_venta',
-            'editar_tipo_venta',
-            'eliminar_tipo_venta',
-        ],
-
-        'Vendedores' => [
-            'ver_vendedores',
-            'crear_vendedor',
-            'editar_vendedor',
-            'eliminar_vendedor',
-            'editar_vendedor_en_detalle'
-        ],
-
-        'Notas de Pedido' => [
-            'ver_pedidos',
-            'crear_pedidos',
-            'editar_pedidos',
-            'anular_pedidos',
-        ],
-
-        'Consignaciones' => [
-            'ver_consignaciones',
-            'crear_consignaciones',
-            'cerrar_consignaciones',
-            'anular_consignaciones',
-            'aprobar_consignaciones',
-            'autorizar_lotes_consignacion',
-            'gestionar_lotes_consignaciones',
-            'ver_precios_consignaciones',
-            'gestionar_precios_consignaciones',
-            'crear_consignacion_emergencia',
-        ],
-        
-        'Cuentas por cobrar' => [
-            'ingresar_pagos',
-            'ver_pagos',
-            'crear_pagos',
-            'anular_pagos',
-            'ver_quedans',
-            'crear_quedans',
-            'anular_quedans',
-            'ver_recuperos',
-            'crear_recupero',
-            'anular_recupero',
-        ],
-
-        'Finanzas' => [
-            'ver_transacciones',
-            'ver_cuentas',
-            'crear_cuenta',
-            'registrar_gasto',
-            'registrar_transferencia',
-        ],
-
-        'Inventario' => [
-            'ver_inventario',
-            'ver_proveedores',
-            'crear_proveedor',
-            'editar_proveedor',
-            'eliminar_proveedor',
-            'ver_compras',
-            'cargar_compras_json',
-            'ingresar_compras',
-            'ver_pagos_a_compras',
-            'registrar_pagos_a_compras',
-        ],
-
-        'Comisiones' => [
-            'ver_comisiones',
-            'generar_comisiones',
-            'configurar_comisiones',
-            'ver_reportes_comisiones',
-        ],
-
-        'Reportes' => [
-            'ver_reportes',
+        'Comedor' => [
+            'ver_pedidos_comedor',
+            'tomar_pedido_comedor',
+            'anular_pedido_comedor',
+            'ver_items_comedor',
+            'gestionar_items_comedor',
+            'gestionar_menu_comedor',
+            'ver_clientes_comedor',
+            'gestionar_clientes_comedor',
+            'ver_deudores_comedor',
+            'registrar_pago_deudor_comedor',
         ],
 
         'Notificaciones' => [
-            'ver_notificacion_factura_anulada',
-            'vencimiento_de_quedans',
-            'ver_alertas_np_pendientes',
-            'ver_alertas_ne_sin_autorizar',
-            'ver_alertas_ne_sin_lotes',
-        ],   
+            'ver_notificacion_deudores_comedor',
+        ],
+
+        'Alertas Operativas' => [
+            'confirmar_solicitud_comedor',
+        ],
 
         'Ajustes del sistema' => [
             'ver_configuracion',
@@ -120,45 +45,6 @@ class Permisos extends BaseConfig
             'eliminar_roles',
             'crear_roles',
             'asignar_permisos',
-        ],
-
-        'Comedor' => [
-            'ver_pedidos_comedor',
-            'tomar_pedido_comedor',
-            'anular_pedido_comedor',
-            'confirmar_solicitud_comedor',
-            'ver_items_comedor',
-            'gestionar_items_comedor',
-            'gestionar_menu_comedor',
-            'ver_clientes_comedor',
-            'gestionar_clientes_comedor',
-            'ver_deudores_comedor',
-            'registrar_pago_deudor_comedor',
-            'ver_notificacion_deudores_comedor',
-        ],
-
-        'Contabilidad' => [
-            'ver_contabilidad',
-            'ver_plan_cuentas',
-            'crear_cuenta_contable',
-            'editar_cuenta_contable',
-            'eliminar_cuenta_contable',
-            'ver_periodos_contables',
-            'crear_periodo_contable',
-            'cerrar_periodo_contable',
-            'ver_asientos',
-            'crear_asiento',
-            'aprobar_asiento',
-            'anular_asiento',
-            'ver_listados_contables',
-            'ver_reportes_contables',
-            'ejecutar_cierre_mes',
-            'ejecutar_cierre_anual',
-            'ver_mantenimientos_contables',
-            'configurar_contabilidad',
-            'ver_remesas_contables',
-            'crear_remesa_contable',
-            'anular_remesa_contable',
         ],
     ];
 }
