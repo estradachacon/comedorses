@@ -8,7 +8,7 @@ class ComedorMenuDiaModel extends Model
 {
     protected $table         = 'comedor_menu_dia';
     protected $primaryKey    = 'id';
-    protected $allowedFields = ['fecha', 'item_id', 'created_by'];
+    protected $allowedFields = ['fecha', 'item_id'];
     protected $useTimestamps = false;
     protected $createdField  = 'created_at';
 
@@ -30,10 +30,10 @@ class ComedorMenuDiaModel extends Model
         return $this->where('fecha', $fecha)->where('item_id', $itemId)->countAllResults() > 0;
     }
 
-    public function agregarItem(int $itemId, string $fecha, int $userId): void
+    public function agregarItem(int $itemId, string $fecha): void
     {
         if (!$this->estaEnMenu($itemId, $fecha)) {
-            $this->insert(['fecha' => $fecha, 'item_id' => $itemId, 'created_by' => $userId]);
+            $this->insert(['fecha' => $fecha, 'item_id' => $itemId]);
         }
     }
 

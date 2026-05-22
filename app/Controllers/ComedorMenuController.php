@@ -60,7 +60,7 @@ class ComedorMenuController extends BaseController
             $this->menuModel->quitarItem($itemId, $fecha);
             $enMenu = false;
         } else {
-            $this->menuModel->agregarItem($itemId, $fecha, session()->get('id'));
+            $this->menuModel->agregarItem($itemId, $fecha);
             $enMenu = true;
         }
 
@@ -77,7 +77,7 @@ class ComedorMenuController extends BaseController
         $items = $this->itemModel->where('disponible', 1)->findAll();
 
         foreach ($items as $item) {
-            $this->menuModel->agregarItem($item['id'], $fecha, session()->get('id'));
+            $this->menuModel->agregarItem($item['id'], $fecha);
         }
 
         return $this->response->setJSON(['ok' => true, 'count' => count($items)]);
