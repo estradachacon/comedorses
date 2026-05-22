@@ -7,9 +7,6 @@ use CodeIgniter\Config\BaseConfig;
 class Permisos extends BaseConfig
 {
     public array $modulos = [
-        'Facturación' => [
-            'emitir_dte',
-        ],
 
         'Ventas' => [
             'cargar_facturas',
@@ -109,7 +106,6 @@ class Permisos extends BaseConfig
 
         'Ajustes del sistema' => [
             'ver_configuracion',
-            'ver_sucursales',
             'ver_almacenamiento',
             'ver_bitacora',
         ],
@@ -124,6 +120,21 @@ class Permisos extends BaseConfig
             'eliminar_roles',
             'crear_roles',
             'asignar_permisos',
+        ],
+
+        'Comedor' => [
+            'ver_pedidos_comedor',
+            'tomar_pedido_comedor',
+            'anular_pedido_comedor',
+            'confirmar_solicitud_comedor',
+            'ver_items_comedor',
+            'gestionar_items_comedor',
+            'gestionar_menu_comedor',
+            'ver_clientes_comedor',
+            'gestionar_clientes_comedor',
+            'ver_deudores_comedor',
+            'registrar_pago_deudor_comedor',
+            'ver_notificacion_deudores_comedor',
         ],
 
         'Contabilidad' => [

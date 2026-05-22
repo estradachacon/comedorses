@@ -738,7 +738,7 @@
                 </li>
 
                 <!-- Campana de alertas operativas -->
-                <?php if (tienePermiso('ver_alertas_np_pendientes') || tienePermiso('ver_alertas_ne_sin_autorizar') || tienePermiso('ver_alertas_ne_sin_lotes')): ?>
+                <?php if (tienePermiso('ver_alertas_np_pendientes') || tienePermiso('ver_alertas_ne_sin_autorizar') || tienePermiso('ver_alertas_ne_sin_lotes') || tienePermiso('confirmar_solicitud_comedor')): ?>
                 <li class="nav-item dropdown mr-3" style="list-style:none;">
                     <a class="nav-link text-white position-relative" href="#"
                        id="alertasDropdown" data-toggle="dropdown"
@@ -1060,9 +1060,50 @@
         // refrescar cada 30 segundos
         setInterval(cargarNotificaciones, 15000);
 
-        <?php if (tienePermiso('ver_alertas_np_pendientes') || tienePermiso('ver_alertas_ne_sin_autorizar') || tienePermiso('ver_alertas_ne_sin_lotes')): ?>
+        <?php if (tienePermiso('ver_alertas_np_pendientes') || tienePermiso('ver_alertas_ne_sin_autorizar') || tienePermiso('ver_alertas_ne_sin_lotes') || tienePermiso('confirmar_solicitud_comedor')): ?>
         // ── Alertas operativas ────────────────────────────────────────────────
         let alertasTotales = 0;
+
+        <?php if (tienePermiso('confirmar_solicitud_comedor')): ?>
+        // ── Notificación sonora de solicitudes ────────────────────────────────
+        let _prevSolicitudes = -1; // -1 = primera carga, no suena
+
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        function _playDing() {
+            try {
+                const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+                function tone(freq, t0, dur) {
+                    const osc  = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.35, ctx.currentTime + t0);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t0 + dur);
+                    osc.start(ctx.currentTime + t0);
+                    osc.stop(ctx.currentTime + t0 + dur);
+                }
+                tone(880,  0,    0.25);
+                tone(1320, 0.18, 0.35);
+            } catch(e) {}
+        }
+
+        function _notifSolicitud(count) {
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            const n = new Notification('🍽️ Nueva solicitud de cliente', {
+                body:      count === 1 ? '1 solicitud esperando confirmación'
+                                       : `${count} solicitudes esperando confirmación`,
+                tag:       'solicitud-comedor',
+                renotify:  true,
+            });
+            n.onclick = function () { window.focus(); window.location.href = '/comedor/pedidos'; n.close(); };
+            setTimeout(() => n.close(), 8000);
+        }
+        <?php endif; ?>
 
         // ── Animación de tab ─────────────────────────────────────────────────
         const _tabTituloOriginal = document.title;
@@ -1111,6 +1152,21 @@
                     }
                     alertasTotales = total;
 
+                    <?php if (tienePermiso('confirmar_solicitud_comedor')): ?>
+                    // Detectar nuevas solicitudes y notificar
+                    const _solAlerta = alertas.find(a => a.tipo === 'solicitudes_comedor');
+                    const _solCount  = _solAlerta ? _solAlerta.count : 0;
+                    if (_prevSolicitudes === -1) {
+                        _prevSolicitudes = _solCount; // primera carga: solo inicializar
+                    } else if (_solCount > _prevSolicitudes) {
+                        _playDing();
+                        _notifSolicitud(_solCount);
+                        _prevSolicitudes = _solCount;
+                    } else {
+                        _prevSolicitudes = _solCount;
+                    }
+                    <?php endif; ?>
+
                     if (!alertas.length) {
                         $('#alertasList').html('<div class="dropdown-item text-muted text-center small py-3">Sin alertas configuradas</div>');
                         return;
@@ -1147,6 +1203,7 @@
         <?php endif; ?>
     </script>
     <?= $this->include('Layouts/toast') ?>
+    <?= $this->renderSection('scripts') ?>
 </body>
 
 </html>

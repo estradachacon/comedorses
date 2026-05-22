@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class ComedorClienteModel extends Model
+{
+    protected $table         = 'comedor_clientes';
+    protected $primaryKey    = 'id';
+    protected $allowedFields = ['nombre', 'identificacion', 'telefono', 'notas', 'activo', 'saldo_pendiente'];
+    protected $useTimestamps = true;
+
+    public function deudores(): array
+    {
+        return $this->where('saldo_pendiente >', 0)
+            ->where('activo', 1)
+            ->orderBy('saldo_pendiente', 'DESC')
+            ->findAll();
+    }
+}

@@ -19,12 +19,14 @@
                 General
             </a>
         </li>
+        <?php if (tienePermiso('ver_sucursales')): ?>
         <li class="nav-item">
             <a class="nav-link" id="branches-tab" data-toggle="tab" href="#branches" role="tab" aria-controls="branches"
                 aria-selected="false">
                 Sucursales y Operación
             </a>
         </li>
+        <?php endif; ?>
     </ul>
 
     <div class="tab-content mt-4" id="settingsTabContent">
@@ -69,6 +71,7 @@
 
         </div>
 
+        <?php if (tienePermiso('ver_sucursales')): ?>
         <div class="tab-pane fade" id="branches" role="tabpanel" aria-labelledby="branches-tab">
 
             <h4 class="mb-3">Parámetros Operativos</h4>
@@ -131,6 +134,7 @@
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 

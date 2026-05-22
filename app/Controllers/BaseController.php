@@ -78,6 +78,7 @@ abstract class BaseController extends Controller
     protected function runSystemTasks()
     {
         $this->revisarVencimientosQuedans();
+        $this->revisarDeudoresComedor();
         $this->ejecutarBackup();
     }
 
@@ -144,6 +145,48 @@ abstract class BaseController extends Controller
                 ]);
         }
     }
+    protected function revisarDeudoresComedor()
+    {
+        $db = \Config\Database::connect();
+
+        $tarea = $db->table('tareas_sistema')
+            ->where('nombre', 'notificacion_deudores_comedor')
+            ->get()->getRow();
+
+        if ($tarea && $tarea->ultima_ejecucion &&
+            date('Y-m-d', strtotime($tarea->ultima_ejecucion)) === date('Y-m-d')) {
+            return;
+        }
+
+        $result = $db->query("
+            SELECT COUNT(*) AS total, COALESCE(SUM(saldo_pendiente), 0) AS monto
+            FROM comedor_clientes
+            WHERE saldo_pendiente > 0 AND activo = 1
+        ")->getRow();
+
+        if ($result && $result->total > 0) {
+            $notifModel = new \App\Models\NotificationModel();
+            $notifModel->insert([
+                'titulo'  => 'Deudores en el comedor',
+                'mensaje' => "{$result->total} comensal(es) con saldo pendiente por $" . number_format($result->monto, 2) . ".",
+                'link'    => base_url('comedor/deudores'),
+                'tipo'    => 'warning',
+                'permiso' => 'ver_notificacion_deudores_comedor',
+            ]);
+        }
+
+        if ($tarea) {
+            $db->table('tareas_sistema')
+                ->where('nombre', 'notificacion_deudores_comedor')
+                ->update(['ultima_ejecucion' => date('Y-m-d H:i:s')]);
+        } else {
+            $db->table('tareas_sistema')->insert([
+                'nombre'           => 'notificacion_deudores_comedor',
+                'ultima_ejecucion' => date('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+
     protected function ejecutarBackup()
     {
         $db = \Config\Database::connect();

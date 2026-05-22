@@ -23,6 +23,10 @@ class Notifications extends BaseController
 
     public function marcarLeida($notificationId)
     {
+        if ((int) $notificationId === 0) {
+            return $this->response->setJSON(['success' => true]);
+        }
+
         $userId = session('id');
 
         $readModel = new NotificationReadModel();

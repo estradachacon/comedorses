@@ -11,6 +11,10 @@ $routes->post('/login', 'AuthController::login');
 $routes->get('/logout', 'AuthController::logout');
 $routes->get('api/backup/estrada', 'Api\BackupController::index');
 
+// ── MENÚ PÚBLICO (sin auth) ──────────────────────────────────────────────────
+$routes->get('menu',          'ComedorPublicoController::index');
+$routes->post('menu/guardar', 'ComedorPublicoController::guardar');
+
 // Recuperación de contraseña (SIN AUTH)
 $routes->group('auth', function ($routes) {
     $routes->post('send-reset-code', 'AuthController::sendResetCode');
@@ -21,7 +25,49 @@ $routes->group('auth', function ($routes) {
 $routes->group('', ['filter' => 'auth'], function ($routes) {    // Grupo del Dashboard (requiere autenticación)
     $routes->get('/dashboard', 'DashboardController::index'); // Página principal del dashboard
 
-    // Módulo de Pedidos
+    // ── MÓDULO COMEDOR ───────────────────────────────────────────────────────
+    // Pedidos
+    $routes->get('comedor/pedidos',                         'ComedorPedidosController::index');
+    $routes->get('comedor/pedidos/nuevo',                   'ComedorPedidosController::nuevo');
+    $routes->post('comedor/pedidos/guardar',                'ComedorPedidosController::guardar');
+    $routes->get('comedor/pedidos/ver/(:num)',              'ComedorPedidosController::ver/$1');
+    $routes->post('comedor/pedidos/anular/(:num)',          'ComedorPedidosController::anular/$1');
+    $routes->get('comedor/pedidos/solicitudes',             'ComedorPedidosController::solicitudes');
+    $routes->post('comedor/pedidos/confirmar/(:num)',       'ComedorPedidosController::confirmar/$1');
+    $routes->get('comedor/solicitudes',                     'ComedorPedidosController::listaSolicitudes');
+    // Reportes
+    $routes->get('comedor/reportes/pedidos',               'ComedorReportesController::pedidos');
+    $routes->get('comedor/reportes/ventas',                'ComedorReportesController::ventas');
+    $routes->get('comedor/reportes/deudas',                'ComedorReportesController::deudas');
+    // Menú del Día
+    $routes->get('comedor/menu',                            'ComedorMenuController::index');
+    $routes->post('comedor/menu/toggle',                    'ComedorMenuController::toggle');
+    $routes->post('comedor/menu/agregar-todos',             'ComedorMenuController::agregarTodos');
+    $routes->post('comedor/menu/limpiar',                   'ComedorMenuController::limpiar');
+    // Items / catálogo
+    $routes->get('comedor/items',                'ComedorItemsController::index');
+    $routes->get('comedor/items/nuevo',          'ComedorItemsController::nuevo');
+    $routes->post('comedor/items/crear',         'ComedorItemsController::crear');
+    $routes->get('comedor/items/editar/(:num)',  'ComedorItemsController::editar/$1');
+    $routes->post('comedor/items/actualizar/(:num)', 'ComedorItemsController::actualizar/$1');
+    $routes->post('comedor/items/toggle/(:num)', 'ComedorItemsController::toggleDisponible/$1');
+    // Categorías
+    $routes->get('comedor/categorias',           'ComedorItemsController::categorias');
+    $routes->post('comedor/categorias/crear',    'ComedorItemsController::crearCategoria');
+    $routes->post('comedor/categorias/toggle/(:num)', 'ComedorItemsController::toggleCategoria/$1');
+    // Clientes / comensales
+    $routes->get('comedor/clientes',             'ComedorClientesController::index');
+    $routes->get('comedor/clientes/nuevo',       'ComedorClientesController::nuevo');
+    $routes->post('comedor/clientes/crear',      'ComedorClientesController::crear');
+    $routes->get('comedor/clientes/editar/(:num)', 'ComedorClientesController::editar/$1');
+    $routes->post('comedor/clientes/actualizar/(:num)', 'ComedorClientesController::actualizar/$1');
+    $routes->get('comedor/clientes/buscar',      'ComedorClientesController::buscar');
+    // Deudores
+    $routes->get('comedor/deudores',             'ComedorDeudoresController::index');
+    $routes->get('comedor/deudores/pendientes/(:num)', 'ComedorDeudoresController::pendientesCliente/$1');
+    $routes->post('comedor/deudores/pagar',      'ComedorDeudoresController::registrarPago');
+
+    // Módulo de Pedidos (legacy)
     $routes->group('orders', function ($routes) {
         $routes->resource('orders', [
             'controller' => 'OrderController'

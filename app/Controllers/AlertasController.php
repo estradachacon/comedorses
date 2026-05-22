@@ -69,6 +69,23 @@ class AlertasController extends BaseController
             ];
         }
 
+        // Solicitudes de clientes pendientes de confirmar
+        if (tienePermiso('confirmar_solicitud_comedor')) {
+            $count = (int) $db->table('comedor_pedidos_head')
+                ->where('estado', 'solicitud')
+                ->where('anulado', 0)
+                ->countAllResults();
+
+            $result[] = [
+                'tipo'  => 'solicitudes_comedor',
+                'label' => 'Solicitudes de clientes',
+                'count' => $count,
+                'link'  => base_url('comedor/solicitudes'),
+                'icon'  => 'fa-bowl-food',
+                'color' => 'warning',
+            ];
+        }
+
         $total = array_sum(array_column($result, 'count'));
 
         return $this->response->setJSON([

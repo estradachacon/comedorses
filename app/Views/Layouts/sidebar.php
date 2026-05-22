@@ -49,348 +49,88 @@ $primaryColor = setting('primary_color') ?? '#1d2744';
                     Dashboard
                 </a>
 
-                <!-- VENTAS -->
-                <?php if (tienePermiso('cargar_facturas') || tienePermiso('ver_facturas') || tienePermiso('ver_clientes') || tienePermiso('ver_tipo_venta')): ?>
-                    <a class="nav-link collapsed" href="#"
-                       data-toggle="collapse" data-target="#ventas"
-                       aria-expanded="false" aria-controls="ventas">
-                        <div class="sb-nav-link-icon si-ventas"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-                        Ventas
-                        <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="ventas" data-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <?php if (tienePermiso('emitir_dte')): ?>
-                                <a class="nav-link" href="/factura/crear">Emisión de DTE</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('cargar_facturas')): ?>
-                                <a class="nav-link" href="/facturas/carga">Cargar JSON</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_facturas')): ?>
-                                <a class="nav-link" href="/facturas">Ver Facturas</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_clientes')): ?>
-                                <a class="nav-link" href="/clientes">Clientes</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_tipo_venta')): ?>
-                                <a class="nav-link" href="/tipo_venta">Tipos de Venta</a>
-                            <?php endif; ?>
-                        </nav>
-                    </div>
+                <!-- COMEDOR: TOMAR PEDIDO -->
+                <?php if (tienePermiso('tomar_pedido_comedor')): ?>
+                <a class="nav-link" href="/comedor/pedidos/nuevo">
+                    <div class="sb-nav-link-icon" style="color:#20c997 !important;"><i class="fa-solid fa-bowl-food"></i></div>
+                    Tomar Pedido
+                </a>
                 <?php endif; ?>
 
-                <!-- CUENTAS POR COBRAR -->
-                <?php if (tienePermiso('ingresar_pagos') || tienePermiso('ver_pagos') || tienePermiso('ver_quedans')): ?>
-                    <a class="nav-link collapsed" href="#"
-                       data-toggle="collapse" data-target="#cuentasCobrar"
-                       aria-expanded="false" aria-controls="cuentasCobrar">
-                        <div class="sb-nav-link-icon si-cxc"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-                        Cuentas por Cobrar
-                        <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="cuentasCobrar" data-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <?php if (tienePermiso('ingresar_pagos')): ?>
-                                <a class="nav-link" href="/payments/new">Ingresar Pagos</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_pagos')): ?>
-                                <a class="nav-link" href="/payments">Ver Pagos</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_quedans')): ?>
-                                <a class="nav-link" href="/quedans">Control de Quedans</a>
-                            <?php endif; ?>
-                        </nav>
-                    </div>
+                <!-- COMEDOR: PEDIDOS DEL DÍA -->
+                <?php if (tienePermiso('ver_pedidos_comedor')): ?>
+                <a class="nav-link" href="/comedor/pedidos">
+                    <div class="sb-nav-link-icon" style="color:#4e73df !important;"><i class="fa-solid fa-receipt"></i></div>
+                    Pedidos del Día
+                </a>
                 <?php endif; ?>
 
-                <!-- INVENTARIO -->
-                <?php if (tienePermiso('ver_inventario')): ?>
-                    <a class="nav-link collapsed" href="#"
-                       data-toggle="collapse" data-target="#inventario"
-                       aria-expanded="false" aria-controls="inventario">
-                        <div class="sb-nav-link-icon si-inventario"><i class="fa-solid fa-boxes-stacked"></i></div>
-                        Inventario
-                        <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="inventario" data-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <?php if (tienePermiso('ver_inventario')): ?>
-                                <a class="nav-link" href="/inventory">Inventario</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_compras')): ?>
-                                <a class="nav-link" href="/purchases">Ver Compras</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_pagos_a_compras')): ?>
-                                <a class="nav-link" href="/compraspagos">Pagos a Compras</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_proveedores')): ?>
-                                <a class="nav-link" href="/proveedores">Proveedores</a>
-                            <?php endif; ?>
-                        </nav>
-                    </div>
+                <!-- COMEDOR: DEUDORES -->
+                <?php if (tienePermiso('ver_deudores_comedor')): ?>
+                <a class="nav-link" href="/comedor/deudores">
+                    <div class="sb-nav-link-icon" style="color:#e74a3b !important;"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                    Deudores
+                </a>
                 <?php endif; ?>
 
-                <!-- FINANZAS -->
-                <?php if (tienePermiso('ver_transacciones') || tienePermiso('ver_cajas') || tienePermiso('crear_caja') || tienePermiso('ver_cuentas')): ?>
-                    <a class="nav-link collapsed" href="#"
-                       data-toggle="collapse" data-target="#cash"
-                       aria-expanded="false" aria-controls="cash">
-                        <div class="sb-nav-link-icon si-finanzas"><i class="fa-solid fa-wallet"></i></div>
-                        Finanzas
-                        <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="cash" data-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <?php if (tienePermiso('ver_cajas') || tienePermiso('ver_historicos_de_caja') || tienePermiso('crear_caja')): ?>
-                                <a class="nav-link collapsed" href="#"
-                                   data-toggle="collapse" data-target="#subCajas"
-                                   aria-expanded="false" aria-controls="subCajas">
-                                    Cajas
-                                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                                </a>
-                                <div class="collapse" id="subCajas" data-parent="#cash">
-                                    <nav class="sb-sidenav-menu-nested nav">
-                                        <?php if (tienePermiso('ver_cajas')): ?>
-                                            <a class="nav-link" href="/cashiers">Lista de Cajas</a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('crear_caja')): ?>
-                                            <a class="nav-link" href="/cashiers/new">Nueva Caja</a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('ver_historicos_de_caja')): ?>
-                                            <a class="nav-link" href="/cashier/transactions">Movimientos</a>
-                                        <?php endif; ?>
-                                    </nav>
-                                </div>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_transacciones')): ?>
-                                <a class="nav-link" href="/transactions">Movimientos Históricos</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_cuentas')): ?>
-                                <a class="nav-link" href="/accounts">Cuentas</a>
-                            <?php endif; ?>
-                        </nav>
-                    </div>
+                <!-- COMEDOR: SOLICITUDES -->
+                <?php if (tienePermiso('confirmar_solicitud_comedor')): ?>
+                <a class="nav-link" href="/comedor/solicitudes">
+                    <div class="sb-nav-link-icon" style="color:#fd7e14 !important;"><i class="fa-solid fa-paper-plane"></i></div>
+                    Solicitudes
+                </a>
                 <?php endif; ?>
 
-                <!-- CONTABILIDAD -->
-                <?php if (
-                    tienePermiso('ver_contabilidad') || tienePermiso('ver_plan_cuentas') ||
-                    tienePermiso('ver_asientos') || tienePermiso('ver_listados_contables') ||
-                    tienePermiso('ver_reportes_contables') || tienePermiso('ejecutar_cierre_mes') ||
-                    tienePermiso('ver_mantenimientos_contables') || tienePermiso('configurar_contabilidad')
-                ): ?>
-                    <a class="nav-link collapsed" href="#"
-                       data-toggle="collapse" data-target="#contabilidad"
-                       aria-expanded="false" aria-controls="contabilidad">
-                        <div class="sb-nav-link-icon si-contab"><i class="fa-solid fa-book-open-reader"></i></div>
-                        Contabilidad
-                        <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="contabilidad" data-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <?php if (tienePermiso('ver_contabilidad')): ?>
-                                <a class="nav-link" href="/contabilidad">Panel Resumen</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_plan_cuentas')): ?>
-                                <a class="nav-link" href="/contabilidad/plan-cuentas">Catálogo de Cuentas</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_periodos_contables')): ?>
-                                <a class="nav-link" href="/contabilidad/periodos">Períodos</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_asientos')): ?>
-                                <a class="nav-link" href="/contabilidad/asientos">Asientos Contables</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_remesas_contables')): ?>
-                                <a class="nav-link" href="/contabilidad/remesas">Remesas Contables</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_listados_contables')): ?>
-                                <a class="nav-link collapsed" href="#"
-                                   data-toggle="collapse" data-target="#contListados"
-                                   aria-expanded="false" aria-controls="contListados">
-                                    Listados
-                                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                                </a>
-                                <div class="collapse" id="contListados">
-                                    <nav class="sb-sidenav-menu-nested nav">
-                                        <a class="nav-link" href="/contabilidad/listados/relacion-cuentas">Relación de Cuentas</a>
-                                        <a class="nav-link" href="/contabilidad/listados/costos">Costos</a>
-                                        <a class="nav-link" href="/contabilidad/listados/gastos">Gastos</a>
-                                        <a class="nav-link" href="/contabilidad/listados/comparativos">Comparativos</a>
-                                        <a class="nav-link" href="/contabilidad/listados/catalogos">Catálogos</a>
-                                    </nav>
-                                </div>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_reportes_contables')): ?>
-                                <a class="nav-link collapsed" href="#"
-                                   data-toggle="collapse" data-target="#contReportes"
-                                   aria-expanded="false" aria-controls="contReportes">
-                                    Reportes
-                                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                                </a>
-                                <div class="collapse" id="contReportes">
-                                    <nav class="sb-sidenav-menu-nested nav">
-                                        <a class="nav-link" href="/contabilidad/reportes/diario">Libro Diario</a>
-                                        <a class="nav-link" href="/contabilidad/reportes/mayor">Libro Mayor</a>
-                                        <a class="nav-link" href="/contabilidad/reportes/auxiliar">Auxiliar de Cuentas</a>
-                                    </nav>
-                                </div>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_mantenimientos_contables')): ?>
-                                <a class="nav-link collapsed" href="#"
-                                   data-toggle="collapse" data-target="#contMant"
-                                   aria-expanded="false" aria-controls="contMant">
-                                    Mantenimientos
-                                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                                </a>
-                                <div class="collapse" id="contMant">
-                                    <nav class="sb-sidenav-menu-nested nav">
-                                        <a class="nav-link" href="/contabilidad/mantenimientos/tipos-partida">Tipos de Partida</a>
-                                        <a class="nav-link" href="/contabilidad/mantenimientos/acumulados">Saldos Actuales</a>
-                                        <a class="nav-link" href="/contabilidad/mantenimientos/acumulados-historicos">Saldos Históricos</a>
-                                        <a class="nav-link" href="/contabilidad/mantenimientos/transacciones-hist">Transacciones Históricas</a>
-                                    </nav>
-                                </div>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ejecutar_cierre_mes') || tienePermiso('ejecutar_cierre_anual')): ?>
-                                <a class="nav-link collapsed" href="#"
-                                   data-toggle="collapse" data-target="#contProcesos"
-                                   aria-expanded="false" aria-controls="contProcesos">
-                                    Procesos
-                                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                                </a>
-                                <div class="collapse" id="contProcesos">
-                                    <nav class="sb-sidenav-menu-nested nav">
-                                        <?php if (tienePermiso('ejecutar_cierre_mes')): ?>
-                                            <a class="nav-link" href="/contabilidad/procesos/cierre-mes">Cierre de Mes</a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('ejecutar_cierre_anual')): ?>
-                                            <a class="nav-link" href="/contabilidad/procesos/cierre-anual">Cierre Anual</a>
-                                        <?php endif; ?>
-                                    </nav>
-                                </div>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('configurar_contabilidad')): ?>
-                                <a class="nav-link" href="/contabilidad/configuracion">Configuración</a>
-                            <?php endif; ?>
-                        </nav>
-                    </div>
+                <!-- COMEDOR: MENÚ DEL DÍA -->
+                <?php if (tienePermiso('gestionar_menu_comedor')): ?>
+                <a class="nav-link" href="/comedor/menu">
+                    <div class="sb-nav-link-icon" style="color:#f6c23e !important;"><i class="fa-solid fa-clipboard-list"></i></div>
+                    Menú del Día
+                </a>
                 <?php endif; ?>
 
-                <!-- COMISIONES -->
-                <?php if (tienePermiso('ver_comisiones') || tienePermiso('configurar_comisiones') || tienePermiso('ver_reportes_comisiones')): ?>
-                    <a class="nav-link collapsed" href="#"
-                       data-toggle="collapse" data-target="#comisiones"
-                       aria-expanded="false" aria-controls="comisiones">
-                        <div class="sb-nav-link-icon si-comis"><i class="fa-solid fa-percent"></i></div>
-                        Comisiones
-                        <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="comisiones" data-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <?php if (tienePermiso('ver_comisiones')): ?>
-                                <a class="nav-link" href="/comisiones">Ver Comisiones</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('configurar_comisiones')): ?>
-                                <a class="nav-link" href="/comisiones/configuracion">Configuración</a>
-                            <?php endif; ?>
-                            <?php if (tienePermiso('ver_reportes_comisiones')): ?>
-                                <a class="nav-link" href="/comisiones/reportes">Reportes</a>
-                            <?php endif; ?>
-                        </nav>
-                    </div>
+                <!-- COMEDOR: REPORTES -->
+                <?php if (tienePermiso('ver_pedidos_comedor') || tienePermiso('ver_deudores_comedor')): ?>
+                <a class="nav-link collapsed" href="#"
+                   data-toggle="collapse" data-target="#reportesComedor"
+                   aria-expanded="false" aria-controls="reportesComedor">
+                    <div class="sb-nav-link-icon" style="color:#36b9cc !important;"><i class="fa-solid fa-chart-line"></i></div>
+                    Reportes
+                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
+                </a>
+                <div class="collapse" id="reportesComedor" data-parent="#sidenavAccordion">
+                    <nav class="sb-sidenav-menu-nested nav">
+                        <?php if (tienePermiso('ver_pedidos_comedor')): ?>
+                            <a class="nav-link" href="/comedor/reportes/pedidos">Pedidos</a>
+                            <a class="nav-link" href="/comedor/reportes/ventas">Ventas</a>
+                        <?php endif; ?>
+                        <?php if (tienePermiso('ver_deudores_comedor')): ?>
+                            <a class="nav-link" href="/comedor/reportes/deudas">Deudas</a>
+                        <?php endif; ?>
+                    </nav>
+                </div>
                 <?php endif; ?>
 
-                <!-- MÓDULO DE VENDEDORES -->
-                <?php if (
-                    tienePermiso('ver_pedidos') || tienePermiso('crear_pedidos') ||
-                    tienePermiso('ver_consignaciones') || tienePermiso('crear_consignaciones') ||
-                    tienePermiso('ver_precios_consignaciones') ||
-                    tienePermiso('ver_recuperos') || tienePermiso('crear_recupero')
-                ): ?>
+                <!-- COMEDOR: CATÁLOGO -->
+                <?php if (tienePermiso('ver_items_comedor') || tienePermiso('ver_clientes_comedor')): ?>
                     <a class="nav-link collapsed" href="#"
-                       data-toggle="collapse" data-target="#modVendedores"
-                       aria-expanded="false" aria-controls="modVendedores">
-                        <div class="sb-nav-link-icon si-vendedores"><i class="fa-solid fa-user-tie"></i></div>
-                        Módulo de Vendedores
+                       data-toggle="collapse" data-target="#catalogo"
+                       aria-expanded="false" aria-controls="catalogo">
+                        <div class="sb-nav-link-icon si-inventario"><i class="fa-solid fa-book-open"></i></div>
+                        Catálogo
                         <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
                     </a>
-                    <div class="collapse" id="modVendedores" data-parent="#sidenavAccordion">
+                    <div class="collapse" id="catalogo" data-parent="#sidenavAccordion">
                         <nav class="sb-sidenav-menu-nested nav">
-
-                            <!-- Notas de Pedido -->
-                            <?php if (tienePermiso('ver_pedidos') || tienePermiso('crear_pedidos')): ?>
-                                <a class="nav-link collapsed" href="#"
-                                   data-toggle="collapse" data-target="#subPedidos"
-                                   aria-expanded="false" aria-controls="subPedidos">
-                                    <i class="fa-solid fa-cart-shopping mr-1" style="font-size:.75rem;"></i> Notas de Pedido
-                                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                                </a>
-                                <div class="collapse" id="subPedidos" data-parent="#modVendedores">
-                                    <nav class="sb-sidenav-menu-nested nav">
-                                        <?php if (tienePermiso('ver_pedidos')): ?>
-                                            <a class="nav-link" href="/pedidos">Ver Pedidos</a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('crear_pedidos')): ?>
-                                            <a class="nav-link" href="/pedidos/crear">Nueva Nota</a>
-                                        <?php endif; ?>
-                                    </nav>
-                                </div>
+                            <?php if (tienePermiso('ver_items_comedor')): ?>
+                                <a class="nav-link" href="/comedor/items">Items / Platillos</a>
                             <?php endif; ?>
-
-                            <!-- Notas de Envío -->
-                            <?php if (tienePermiso('ver_consignaciones') || tienePermiso('crear_consignaciones') || tienePermiso('ver_precios_consignaciones') || tienePermiso('crear_consignacion_emergencia')): ?>
-                                <a class="nav-link collapsed" href="#"
-                                   data-toggle="collapse" data-target="#subConsig"
-                                   aria-expanded="false" aria-controls="subConsig">
-                                    <i class="fa-solid fa-truck-ramp-box mr-1" style="font-size:.75rem;"></i> Notas de Envío
-                                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                                </a>
-                                <div class="collapse" id="subConsig" data-parent="#modVendedores">
-                                    <nav class="sb-sidenav-menu-nested nav">
-                                        <?php if (tienePermiso('ver_consignaciones')): ?>
-                                            <a class="nav-link" href="/consignaciones">Ver Notas</a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('crear_consignaciones')): ?>
-                                            <a class="nav-link" href="/consignaciones/crear">Nueva Nota</a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('crear_consignacion_emergencia')): ?>
-                                            <a class="nav-link" href="/consignaciones/crear-emergencia">
-                                                <i class="fa-solid fa-bolt text-warning mr-1" style="font-size:.65rem;"></i>NE Stock Emergencia
-                                            </a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('ver_precios_consignaciones')): ?>
-                                            <a class="nav-link" href="/consignaciones/precios">Precios por Vendedor</a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('ver_consignaciones')): ?>
-                                            <a class="nav-link" href="/pacientes">Pacientes</a>
-                                            <a class="nav-link" href="/doctores">Doctores</a>
-                                            <a class="nav-link" href="/tipo-notas">Tipo de Nota</a>
-                                            <a class="nav-link" href="/consignaciones/reportes">Reportes</a>
-                                        <?php endif; ?>
-                                    </nav>
-                                </div>
+                            <?php if (tienePermiso('gestionar_items_comedor')): ?>
+                                <a class="nav-link" href="/comedor/categorias">Categorías</a>
                             <?php endif; ?>
-
-                            <!-- Recuperos -->
-                            <?php if (tienePermiso('ver_recuperos') || tienePermiso('crear_recupero')): ?>
-                                <a class="nav-link collapsed" href="#"
-                                   data-toggle="collapse" data-target="#subRecuperos"
-                                   aria-expanded="false" aria-controls="subRecuperos">
-                                    <i class="fa-solid fa-hand-holding-dollar mr-1" style="font-size:.75rem;"></i> Recuperos
-                                    <div class="sb-sidenav-collapse-arrow"><i class="fa-solid fa-angle-down"></i></div>
-                                </a>
-                                <div class="collapse" id="subRecuperos" data-parent="#modVendedores">
-                                    <nav class="sb-sidenav-menu-nested nav">
-                                        <?php if (tienePermiso('ver_recuperos')): ?>
-                                            <a class="nav-link" href="/recuperos">Ver Recuperos</a>
-                                        <?php endif; ?>
-                                        <?php if (tienePermiso('crear_recupero')): ?>
-                                            <a class="nav-link" href="/recuperos/nuevo">Nuevo Recupero</a>
-                                        <?php endif; ?>
-                                    </nav>
-                                </div>
+                            <?php if (tienePermiso('ver_clientes_comedor')): ?>
+                                <a class="nav-link" href="/comedor/clientes">Comensales</a>
                             <?php endif; ?>
-
                         </nav>
                     </div>
                 <?php endif; ?>
