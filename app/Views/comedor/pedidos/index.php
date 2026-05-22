@@ -35,7 +35,7 @@
 <div class="container-fluid px-3">
 
     <!-- ── ENCABEZADO ─────────────────────────────────────────────────── -->
-    <div class="d-flex justify-content-between align-items-center mb-3 pt-1">
+    <div class="d-flex justify-content-between mb-3 pt-1">
         <h5 class="mb-0 font-weight-bold">
             <i class="fa-solid fa-receipt mr-2 text-primary"></i><?= esc($title) ?>
         </h5>
@@ -56,7 +56,7 @@
     <!-- ── SOLICITUDES PENDIENTES ──────────────────────────────────────── -->
     <?php if (tienePermiso('confirmar_solicitud_comedor')): ?>
     <div id="panelSolicitudes" class="mb-3" style="display:none;">
-        <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="d-flex justify-content-between mb-2">
             <span class="font-weight-bold text-warning" style="font-size:.9rem;">
                 <i class="fa-solid fa-triangle-exclamation mr-1"></i>
                 Solicitudes pendientes
@@ -70,7 +70,7 @@
 
     <!-- ── FILTRO FECHA ────────────────────────────────────────────────── -->
     <form method="get" class="mb-3">
-        <div class="d-flex align-items-center gap-2" style="gap:.5rem;">
+        <div class="d-flex gap-2" style="gap:.5rem;">
             <input type="date" name="fecha" class="form-control form-control-sm" value="<?= esc($fecha) ?>" style="max-width:160px;">
             <button class="btn btn-outline-secondary btn-sm" type="submit">
                 <i class="fa-solid fa-filter"></i>
@@ -145,7 +145,7 @@
             <div class="d-flex justify-content-between align-items-start">
                 <!-- Izquierda -->
                 <div style="min-width:0;flex:1;">
-                    <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
+                    <div class="d-flex flex-wrap" style="gap:6px;">
                         <a href="/comedor/pedidos/ver/<?= $p['id'] ?>" class="pedido-numero"><?= esc($p['numero']) ?></a>
                         <span class="badge badge-<?= $mapEstado[$p['estado']] ?? 'light' ?>" style="font-size:.72rem;">
                             <?= ucfirst($p['estado']) ?>
@@ -276,7 +276,7 @@ function renderSolicitudes(lista) {
     let html = '';
     lista.forEach(p => {
         html += `
-        <div class="sol-card d-flex justify-content-between align-items-center">
+        <div class="sol-card d-flex justify-content-between">
             <div style="min-width:0;flex:1;">
                 <div class="font-weight-bold" style="font-size:.9rem;">${p.cliente_nombre}</div>
                 <div class="text-muted" style="font-size:.78rem;">${p.numero}</div>

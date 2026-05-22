@@ -43,6 +43,9 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {    // Grupo del Da
     $routes->get('comedor/menu',                            'ComedorMenuController::index');
     $routes->post('comedor/menu/toggle',                    'ComedorMenuController::toggle');
     $routes->post('comedor/menu/agregar-todos',             'ComedorMenuController::agregarTodos');
+    $routes->post('comedor/menu/copiar-ultimo',             'ComedorMenuController::copiarUltimo');
+    $routes->post('comedor/menu/servicio',                  'ComedorMenuController::setServicio');
+    $routes->get('comedor/menu/whatsapp',                   'ComedorMenuController::whatsapp');
     $routes->post('comedor/menu/limpiar',                   'ComedorMenuController::limpiar');
     // Items / catálogo
     $routes->get('comedor/items',                'ComedorItemsController::index');

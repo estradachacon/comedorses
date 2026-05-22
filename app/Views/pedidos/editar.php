@@ -156,7 +156,7 @@
                     <hr>
 
                     <!-- Tabla de productos -->
-                    <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex justify-content-between mb-2">
                         <h6 class="mb-0">Productos</h6>
                         <button type="button" id="btnAgregarProducto" class="btn btn-outline-primary btn-sm">
                             <i class="fa-solid fa-plus"></i> Agregar producto

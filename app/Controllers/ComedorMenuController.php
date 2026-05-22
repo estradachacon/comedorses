@@ -39,11 +39,13 @@ class ComedorMenuController extends BaseController
             'item_id'
         );
 
-        $data['todos']   = $todosItems;
-        $data['enMenu']  = $enMenu;
-        $data['fecha']   = $fecha;
+        $data['todos']      = $todosItems;
+        $data['enMenu']     = $enMenu;
+        $data['servicios']  = $this->menuModel->getServiciosDia($fecha);
+        $data['fecha']      = $fecha;
         $data['urlPublico'] = base_url('menu');
-        $data['title']   = 'Menú del Día';
+        $data['ultimoMenu'] = empty($enMenu) ? $this->menuModel->ultimoDiaConMenu($fecha) : null;
+        $data['title']      = 'Menú del Día';
         return view('comedor/menu/index', $data);
     }
 
@@ -81,6 +83,107 @@ class ComedorMenuController extends BaseController
         }
 
         return $this->response->setJSON(['ok' => true, 'count' => count($items)]);
+    }
+
+    public function setServicio()
+    {
+        if (!tienePermiso('gestionar_menu_comedor')) {
+            return $this->response->setJSON(['ok' => false]);
+        }
+
+        $itemId   = (int) $this->request->getPost('item_id');
+        $fecha    = $this->request->getPost('fecha') ?? date('Y-m-d');
+        $servicio = $this->request->getPost('servicio');
+        $valor    = (int) $this->request->getPost('valor');
+
+        if (!in_array($servicio, ['desayuno', 'refrigerio', 'almuerzo'])) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Servicio inválido.']);
+        }
+
+        $this->menuModel->setServicio($itemId, $fecha, $servicio, $valor);
+        return $this->response->setJSON(['ok' => true]);
+    }
+
+    public function whatsapp()
+    {
+        if (!tienePermiso('gestionar_menu_comedor')) {
+            return $this->response->setJSON(['ok' => false]);
+        }
+
+        $fecha = $this->request->getGet('fecha') ?? date('Y-m-d');
+        $items = $this->menuModel->itemsDelDia($fecha);
+
+        $complementos = [];
+        $grupos       = ['desayuno' => [], 'refrigerio' => [], 'almuerzo' => []];
+        $sinServicio  = [];
+
+        foreach ($items as $item) {
+            $activos = (int)$item['desayuno'] + (int)$item['refrigerio'] + (int)$item['almuerzo'];
+
+            if ($activos === 3) {
+                $complementos[] = $item;
+            } elseif ($activos === 0) {
+                $sinServicio[] = $item;
+            } else {
+                foreach (['desayuno', 'refrigerio', 'almuerzo'] as $s) {
+                    if (!empty($item[$s])) {
+                        $grupos[$s][] = $item;
+                    }
+                }
+            }
+        }
+
+        $emojis    = ['desayuno' => '☀️', 'refrigerio' => '🥪', 'almuerzo' => '🍽️'];
+        $etiquetas = ['desayuno' => 'Desayuno', 'refrigerio' => 'Refrigerio', 'almuerzo' => 'Almuerzo'];
+
+        $lineas = ['Buen día!! ☀️☀️'];
+        foreach ($grupos as $key => $grupo) {
+            if (empty($grupo)) continue;
+            $lineas[] = '';
+            $lineas[] = $emojis[$key] . ' ' . $etiquetas[$key];
+            foreach ($grupo as $item) {
+                $precio = '$' . number_format($item['precio'], 2);
+                $lineas[] = ($key === 'almuerzo' ? '✔️ ' : '') . $item['nombre'] . ' ' . $precio;
+            }
+        }
+
+        if (!empty($complementos)) {
+            $lineas[] = '';
+            $lineas[] = '🌟 Complementos (todo el día)';
+            foreach ($complementos as $item) {
+                $lineas[] = $item['nombre'] . ' $' . number_format($item['precio'], 2);
+            }
+        }
+
+        if (!empty($sinServicio)) {
+            $lineas[] = '';
+            $lineas[] = '📋 Sin servicio asignado';
+            foreach ($sinServicio as $item) {
+                $lineas[] = $item['nombre'] . ' $' . number_format($item['precio'], 2);
+            }
+        }
+
+        return $this->response->setJSON([
+            'ok'    => true,
+            'texto' => implode("\n", $lineas),
+        ]);
+    }
+
+    public function copiarUltimo()
+    {
+        if (!tienePermiso('gestionar_menu_comedor')) {
+            return $this->response->setJSON(['ok' => false]);
+        }
+
+        $fecha  = $this->request->getPost('fecha') ?? date('Y-m-d');
+        $ultimo = $this->menuModel->ultimoDiaConMenu($fecha);
+
+        if (!$ultimo) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'No hay menú anterior registrado.']);
+        }
+
+        $count = $this->menuModel->copiarDeFecha($ultimo['fecha'], $fecha);
+        return $this->response->setJSON(['ok' => true, 'count' => $count, 'desde' => $ultimo['fecha']]);
     }
 
     public function limpiar()

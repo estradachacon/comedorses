@@ -72,7 +72,7 @@
 
     <!-- ── MENÚ ─────────────────────────────────────────────────── -->
     <div class="pos-menu">
-        <div class="d-flex align-items-center mb-3">
+        <div class="d-flex justify-content-between mb-3">
             <a href="/comedor/pedidos" class="btn btn-outline-secondary btn-sm mr-3">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>

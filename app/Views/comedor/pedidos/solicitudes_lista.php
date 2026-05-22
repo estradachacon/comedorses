@@ -2,7 +2,7 @@
 <?= $this->section('content') ?>
 
 <div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between mb-3">
         <h4 class="mb-0">
             <i class="fa-solid fa-paper-plane mr-2 text-warning"></i><?= esc($title) ?>
         </h4>

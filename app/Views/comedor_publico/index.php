@@ -11,10 +11,9 @@
 
 <!-- Pills de categorías -->
 <div class="cat-pills" id="catPills">
-    <?php $cats = array_keys($porCategoria); ?>
-    <?php foreach ($cats as $i => $cat): ?>
-    <button class="cat-pill <?= $i === 0 ? 'active' : '' ?>"
-            data-cat="<?= esc($cat, 'attr') ?>"><?= esc($cat) ?></button>
+    <button class="cat-pill active" data-cat="todos">Todos</button>
+    <?php foreach (array_keys($porCategoria) as $cat): ?>
+    <button class="cat-pill" data-cat="<?= esc($cat, 'attr') ?>"><?= esc($cat) ?></button>
     <?php endforeach; ?>
 </div>
 
@@ -186,15 +185,18 @@ $(document).on('click', '.btn-menos', function (e) {
     renderCartBar();
 });
 
-// Scroll pills de categorías
+// Filtro por categoría
 $('.cat-pill').on('click', function () {
     $('.cat-pill').removeClass('active');
     $(this).addClass('active');
     const cat = $(this).data('cat');
-    const section = $('[data-section="' + cat + '"]');
-    if (section.length) {
-        $('html,body').animate({ scrollTop: section.offset().top - 120 }, 250);
+    if (cat === 'todos') {
+        $('.cat-section').show();
+    } else {
+        $('.cat-section').hide();
+        $('[data-section="' + cat + '"]').show();
     }
+    $('html,body').animate({ scrollTop: $('#menuContent').offset().top - 80 }, 150);
 });
 
 // Abrir modal con resumen
