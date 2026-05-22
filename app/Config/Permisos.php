@@ -96,6 +96,14 @@ class Permisos extends BaseConfig
             'ver_reportes',
         ],
 
+        'Notificaciones' => [
+            'ver_notificacion_factura_anulada',
+            'vencimiento_de_quedans',
+            'ver_alertas_np_pendientes',
+            'ver_alertas_ne_sin_autorizar',
+            'ver_alertas_ne_sin_lotes',
+        ],   
+
         'Ajustes del sistema' => [
             'ver_configuracion',
             'ver_almacenamiento',
