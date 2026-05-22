@@ -128,17 +128,17 @@
 
 <!-- Modal WhatsApp -->
 <div class="modal fade" id="modalWhatsapp" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-dialog-centered" style="margin:8px auto;max-width:calc(100% - 16px);">
+        <div class="modal-content" style="max-height:calc(100vh - 32px);display:flex;flex-direction:column;">
             <div class="modal-header py-2">
                 <h6 class="modal-title font-weight-bold mb-0">
                     <i class="fa-brands fa-whatsapp mr-2 text-success"></i>Texto para WhatsApp
                 </h6>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-            <div class="modal-body pb-2">
-                <textarea id="txtWhatsapp" class="form-control" rows="12"
-                          style="font-size:.85rem;font-family:monospace;resize:vertical;"></textarea>
+            <div class="modal-body pb-2" style="overflow-y:auto;flex:1 1 auto;">
+                <textarea id="txtWhatsapp" class="form-control" rows="10"
+                          style="font-size:.85rem;font-family:monospace;resize:none;width:100%;"></textarea>
                 <small class="text-muted">Puedes editar el texto antes de copiar.</small>
             </div>
             <div class="modal-footer py-2">

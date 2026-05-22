@@ -712,6 +712,7 @@
                 <div class="navbar-divider d-none d-lg-block mr-3"></div>
 
                 <!-- Campana -->
+                <?php if (tienePermiso('ver_notificacion_factura_anulada') || tienePermiso('vencimiento_de_quedans') || tienePermiso('ver_alertas_np_pendientes') || tienePermiso('ver_alertas_ne_sin_autorizar') || tienePermiso('ver_alertas_ne_sin_lotes') || tienePermiso('ver_notificacion_deudores_comedor')): ?>
                 <li class="nav-item dropdown mr-3" style="list-style:none;">
                     <a class="nav-link text-white position-relative" href="#"
                        id="notifDropdown" data-toggle="dropdown"
@@ -736,6 +737,7 @@
                         </a>
                     </div>
                 </li>
+                <?php endif; ?>
 
                 <!-- Campana de alertas operativas -->
                 <?php if (tienePermiso('ver_alertas_np_pendientes') || tienePermiso('ver_alertas_ne_sin_autorizar') || tienePermiso('ver_alertas_ne_sin_lotes') || tienePermiso('confirmar_solicitud_comedor')): ?>
