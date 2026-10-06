@@ -14,6 +14,7 @@ $routes->get('api/backup/estrada', 'Api\BackupController::index');
 // ── MENÚ PÚBLICO (sin auth) ──────────────────────────────────────────────────
 $routes->get('menu',          'ComedorPublicoController::index');
 $routes->post('menu/guardar', 'ComedorPublicoController::guardar');
+$routes->get('menu/historial', 'ComedorPublicoController::historial');
 
 // Cuenta del comensal (independiente de los usuarios del sistema, sin auth)
 $routes->post('menu/cuenta/registrar', 'ComedorClienteAuthController::registrar');

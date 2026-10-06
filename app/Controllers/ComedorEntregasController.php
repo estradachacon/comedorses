@@ -133,18 +133,7 @@ class ComedorEntregasController extends BaseController
         $db = \Config\Database::connect();
         $db->transBegin();
         try {
-            $total = (float) $pedido['total'];
-
-            // Si ya se le había asignado fiado antes (confirmado), hay que revertir ese saldo antes
-            // de aplicar el pago definitivo de la entrega (que pudo haber cambiado, ej. a contado).
-            // Si el pedido seguía como "solicitud" nunca se sumó nada, así que no hay nada que revertir.
-            if ($pedido['tipo_pago'] === 'fiado' && $pedido['cliente_id'] && (float) $pedido['saldo'] > 0 && $pedido['estado'] !== 'solicitud') {
-                $db->table('comedor_clientes')
-                    ->where('id', $pedido['cliente_id'])
-                    ->set('saldo_pendiente', "GREATEST(0, saldo_pendiente - {$pedido['saldo']})", false)
-                    ->update();
-            }
-
+            $total       = (float) $pedido['total'];
             $montoPagado = ($tipoPago === 'contado') ? $total : 0.0;
             $saldo       = $total - $montoPagado;
             $estado      = ($tipoPago === 'contado') ? 'pagado' : 'pendiente';
@@ -178,11 +167,22 @@ class ComedorEntregasController extends BaseController
                         ->set('vuelto_pendiente', "vuelto_pendiente + {$vuelto}", false)
                         ->update();
                 }
-            } elseif ($clienteId) {
+            }
+
+            // Recalcular el saldo_pendiente (deuda real) del cliente directamente desde sus pedidos
+            // fiado aún pendientes, tanto para el cliente nuevo como para el anterior si el cajero
+            // lo cambió al entregar. Evita desincronías sin importar si antes se había "confirmado" o no.
+            foreach (array_unique(array_filter([$clienteId, $pedido['cliente_id']])) as $cid) {
+                $suma = $db->table('comedor_pedidos_head')
+                    ->selectSum('saldo')
+                    ->where('cliente_id', $cid)
+                    ->where('tipo_pago', 'fiado')
+                    ->where('estado', 'pendiente')
+                    ->where('anulado', 0)
+                    ->get()->getRow();
                 $db->table('comedor_clientes')
-                    ->where('id', $clienteId)
-                    ->set('saldo_pendiente', "saldo_pendiente + {$saldo}", false)
-                    ->update();
+                    ->where('id', $cid)
+                    ->update(['saldo_pendiente' => $suma->saldo ?? 0]);
             }
 
             $db->transCommit();

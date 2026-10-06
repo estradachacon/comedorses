@@ -247,44 +247,17 @@ class ComedorPedidosController extends BaseController
             return $this->response->setJSON(['ok' => false, 'msg' => 'Para confirmar un pedido fiado debes asociar un comensal.']);
         }
 
-        $db = \Config\Database::connect();
-        $db->transBegin();
-        try {
-            $total       = (float) $pedido['total'];
-            $montoPagado = ($tipoPago === 'contado') ? $total : 0.0;
-            $saldo       = $total - $montoPagado;
-            $estado      = ($tipoPago === 'contado') ? 'pagado' : 'pendiente';
+        // Confirmar solo acepta el pedido (sale de "solicitud" y entra al control del comedor).
+        // NO resuelve el pago todavía: eso se decide hasta la entrega real, en /comedor/entregas.
+        // monto_pagado/saldo quedan como se crearon (0 / total) hasta ese momento.
+        $this->headModel->update($id, [
+            'tipo_pago'  => $tipoPago,
+            'estado'     => 'pendiente',
+            'cliente_id' => $clienteId,
+            'created_by' => session()->get('id'),
+        ]);
 
-            $this->headModel->update($id, [
-                'tipo_pago'    => $tipoPago,
-                'monto_pagado' => $montoPagado,
-                'saldo'        => $saldo,
-                'estado'       => $estado,
-                'cliente_id'   => $clienteId,
-                'created_by'   => session()->get('id'),
-            ]);
-
-            if ($tipoPago === 'contado') {
-                $this->pagoModel->insert([
-                    'pedido_id'  => $id,
-                    'cliente_id' => $clienteId,
-                    'monto'      => $total,
-                    'notas'      => 'Pago confirmado por cajero',
-                    'created_by' => session()->get('id'),
-                ]);
-            } elseif ($clienteId) {
-                $db->table('comedor_clientes')
-                    ->where('id', $clienteId)
-                    ->set('saldo_pendiente', "saldo_pendiente + {$saldo}", false)
-                    ->update();
-            }
-
-            $db->transCommit();
-            return $this->response->setJSON(['ok' => true]);
-        } catch (\Exception $e) {
-            $db->transRollback();
-            return $this->response->setJSON(['ok' => false, 'msg' => $e->getMessage()]);
-        }
+        return $this->response->setJSON(['ok' => true]);
     }
 
     public function anular(int $id)

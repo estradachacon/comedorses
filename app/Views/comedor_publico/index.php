@@ -96,12 +96,125 @@
 .cart-drawer-tag { font-size: .72rem; color: #888; font-weight: 400; }
 .cart-drawer-qty { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .cart-drawer-price { font-size: .85rem; font-weight: 700; color: #20c997; width: 58px; text-align: right; flex-shrink: 0; }
+
+.historial-panel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 100%;
+    max-width: 480px;
+    background: #f4f6f9;
+    z-index: 300;
+    transform: translateX(100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    overflow-y: auto;
+    box-shadow: -4px 0 20px rgba(0,0,0,.2);
+}
+.historial-panel.open { transform: translateX(0); }
+.historial-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--primary);
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.historial-header button { background: none; border: none; color: #fff; font-size: 1.2rem; padding: 0; }
+.historial-resumen { display: flex; gap: 10px; padding: 14px 16px 0; }
+.historial-stat {
+    flex: 1;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.historial-stat-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: #888; font-weight: 700; }
+.historial-stat-value { font-size: 1.2rem; font-weight: 800; margin-top: 2px; }
+.historial-pedido {
+    background: #fff;
+    border-radius: 12px;
+    margin: 10px 16px 0;
+    padding: 12px 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.historial-pedido-numero { font-size: .75rem; color: #888; font-family: monospace; }
+
+/* ── Botones con más vida: sombra, levantamiento al pasar el mouse, click con "resorte" ── */
+.btn { transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease; }
+.btn:active { transform: scale(.96); }
+
+#btnPagoContado, #btnPagoFiado {
+    border-radius: 16px;
+    border-width: 2px;
+    font-weight: 700;
+    padding: 1rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+}
+#btnPagoContado:hover, #btnPagoFiado:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(0,0,0,.14); }
+
+#btnEnviarPedido {
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), #20c997);
+    box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+#btnEnviarPedido:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,.22); }
+
+#btnLoginCliente, #btnRegistrarCliente {
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary), #20c997);
+    box-shadow: 0 4px 14px rgba(0,0,0,.15);
+}
+#btnLoginCliente:hover, #btnRegistrarCliente:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.2); }
+
+.cart-bar-btn {
+    border-radius: 24px;
+    font-weight: 800;
+    box-shadow: 0 2px 10px rgba(0,0,0,.3);
+}
+.cart-bar-btn:hover { transform: scale(1.05); }
+
+.cuenta-tab { border-radius: 20px !important; font-weight: 700; }
+.pago-exacto-btn { font-weight: 600; }
+
+#btnMiHistorial {
+    border-radius: 20px;
+    font-weight: 700;
+    transition: all .15s ease;
+}
+#btnMiHistorial:hover { background: var(--primary); color: #fff; transform: translateY(-1px); }
+
+#btnPedidoAtras { border-radius: 14px; }
 </style>
 
 <?php if ($clienteSesion): ?>
 <div class="d-flex justify-content-between align-items-center px-3 py-2" style="background:#fff;border-bottom:1px solid #e9ecef;font-size:.8rem;">
     <span><i class="fa-solid fa-circle-user mr-1 text-primary"></i>Hola, <strong><?= esc($clienteSesion['nombre']) ?></strong></span>
-    <a href="#" id="btnLogoutCliente" class="text-danger">Cerrar sesión</a>
+    <div class="d-flex align-items-center" style="gap:12px;">
+        <button type="button" id="btnMiHistorial" class="btn btn-sm btn-outline-primary py-1">
+            <i class="fa-solid fa-receipt mr-1"></i>Mi historial
+        </button>
+        <a href="#" id="btnLogoutCliente" class="text-danger">Cerrar sesión</a>
+    </div>
+</div>
+
+<!-- Panel: mi historial (pedidos + saldo) -->
+<div class="historial-panel" id="panelHistorial">
+    <div class="historial-header">
+        <button type="button" id="btnVolverMenu"><i class="fa-solid fa-arrow-left"></i></button>
+        <div>
+            <div class="font-weight-bold" style="font-size:.95rem;">Mi cuenta</div>
+            <div style="font-size:.72rem;opacity:.85;" id="histNombre"></div>
+        </div>
+    </div>
+    <div class="historial-resumen" id="historialResumen"></div>
+    <div id="historialLista" class="pb-4"></div>
 </div>
 <?php endif; ?>
 
@@ -670,6 +783,119 @@ $('#btnLogoutCliente').on('click', function (e) {
     $.post('<?= base_url('menu/cuenta/logout') ?>', { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' })
         .always(function () { location.reload(); });
 });
+
+// Mi historial: vista paralela que se desliza desde la derecha
+$('#btnMiHistorial').on('click', function () {
+    $('#panelHistorial').addClass('open');
+    cargarHistorial();
+});
+
+$('#btnVolverMenu').on('click', function () {
+    $('#panelHistorial').removeClass('open');
+});
+
+// Cerrar el historial si se hace clic fuera del panel
+$(document).on('click', function (e) {
+    if ($('#panelHistorial').hasClass('open') && !$(e.target).closest('#panelHistorial, #btnMiHistorial').length) {
+        $('#panelHistorial').removeClass('open');
+    }
+});
+
+// Traduce el estado crudo del pedido a algo que el cliente entienda de un vistazo,
+// según en qué parte del proceso va: recién pedido, aceptado, o ya entregado (y cómo quedó el pago).
+function estadoAmigablePedido(p) {
+    const total  = parseFloat(p.total) || 0;
+    const pagado = parseFloat(p.monto_pagado) || 0;
+    const saldo  = parseFloat(p.saldo) || 0;
+    const monto  = parseFloat(p.monto_recibido);
+
+    if (p.estado === 'anulado') {
+        return { texto: 'Anulado', clase: 'secondary' };
+    }
+    if (p.estado === 'solicitud') {
+        return { texto: 'Pendiente', clase: 'info', nota: 'Esperando que el comedor lo confirme.', notaClase: 'muted' };
+    }
+    if (!p.entregado_at) {
+        return { texto: 'Confirmado', clase: 'info', nota: 'Ya está en control, falta entregarlo.', notaClase: 'muted' };
+    }
+
+    // Ya entregado: el badge refleja cómo quedó el pago.
+    if (p.tipo_pago === 'contado') {
+        if (monto && monto > total) {
+            return { texto: 'Pagado', clase: 'success', nota: `Te deben cambio: $${(monto - total).toFixed(2)}`, notaClase: 'info' };
+        }
+        return { texto: 'Pago completado', clase: 'success' };
+    }
+
+    // Fiado
+    if (saldo <= 0) {
+        return { texto: 'Pago completado', clase: 'success' };
+    }
+    if (pagado > 0) {
+        return { texto: 'Debe parcial', clase: 'warning', nota: `Pendiente: $${saldo.toFixed(2)}`, notaClase: 'danger' };
+    }
+    return { texto: 'Se debe', clase: 'danger', nota: `Pendiente: $${saldo.toFixed(2)}`, notaClase: 'danger' };
+}
+
+function cargarHistorial() {
+    $('#histNombre').text(clienteSesion.nombre);
+    $('#historialResumen').html('');
+    $('#historialLista').html('<div class="text-center py-5"><i class="fa-solid fa-spinner fa-spin"></i></div>');
+
+    $.get('<?= base_url('menu/historial') ?>').done(function (r) {
+        if (!r.ok) {
+            $('#historialLista').html('<p class="text-center text-muted py-4">' + r.msg + '</p>');
+            return;
+        }
+
+        const saldo  = parseFloat(r.cliente.saldo_pendiente) || 0;
+        const vuelto = parseFloat(r.cliente.vuelto_pendiente) || 0;
+        let resumenHtml = '';
+        if (saldo > 0) {
+            resumenHtml += `<div class="historial-stat">
+                <div class="historial-stat-label">Debes</div>
+                <div class="historial-stat-value text-danger">$${saldo.toFixed(2)}</div>
+            </div>`;
+        }
+        if (vuelto > 0) {
+            resumenHtml += `<div class="historial-stat">
+                <div class="historial-stat-label">Te deben</div>
+                <div class="historial-stat-value text-info">$${vuelto.toFixed(2)}</div>
+            </div>`;
+        }
+        if (!resumenHtml) {
+            resumenHtml = `<div class="historial-stat">
+                <div class="historial-stat-label">Estado</div>
+                <div class="historial-stat-value text-success">Al día</div>
+            </div>`;
+        }
+        $('#historialResumen').html(resumenHtml);
+
+        if (!r.pedidos.length) {
+            $('#historialLista').html('<p class="text-center text-muted py-4">Todavía no has hecho ningún pedido.</p>');
+            return;
+        }
+
+        let html = '';
+        r.pedidos.forEach(p => {
+            const itemsTxt = (p.items || []).join(', ');
+            const estado = estadoAmigablePedido(p);
+            html += `
+            <div class="historial-pedido">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div style="min-width:0;">
+                        <div class="font-weight-bold" style="font-size:.9rem;">$${parseFloat(p.total).toFixed(2)}</div>
+                        <div class="historial-pedido-numero">${p.numero_formateado}</div>
+                    </div>
+                    <span class="badge badge-${estado.clase}">${estado.texto}</span>
+                </div>
+                <div class="text-muted small mt-1">${itemsTxt}</div>
+                ${estado.nota ? `<div class="small font-weight-bold mt-1 text-${estado.notaClase}">${estado.nota}</div>` : ''}
+            </div>`;
+        });
+        $('#historialLista').html(html);
+    });
+}
 
 // Enviar solicitud (contado o fiado)
 $('#btnEnviarPedido').on('click', function () {

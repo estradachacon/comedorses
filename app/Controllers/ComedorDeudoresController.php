@@ -36,6 +36,7 @@ class ComedorDeudoresController extends BaseController
         }
         $pedidos = $this->pedidoModel
             ->where('cliente_id', $clienteId)
+            ->where('tipo_pago', 'fiado')
             ->where('estado', 'pendiente')
             ->where('anulado', 0)
             ->orderBy('fecha', 'ASC')
@@ -62,6 +63,7 @@ class ComedorDeudoresController extends BaseController
         try {
             $pendientes = $this->pedidoModel
                 ->where('cliente_id', $clienteId)
+                ->where('tipo_pago', 'fiado')
                 ->where('estado', 'pendiente')
                 ->where('anulado', 0)
                 ->orderBy('fecha', 'ASC')
@@ -93,10 +95,11 @@ class ComedorDeudoresController extends BaseController
                 $restante -= $aplicar;
             }
 
-            // Recalcular saldo total del cliente desde los pedidos
+            // Recalcular saldo total del cliente desde los pedidos (solo deuda fiado real)
             $suma = $db->table('comedor_pedidos_head')
                 ->selectSum('saldo')
                 ->where('cliente_id', $clienteId)
+                ->where('tipo_pago', 'fiado')
                 ->where('estado', 'pendiente')
                 ->where('anulado', 0)
                 ->get()->getRow();

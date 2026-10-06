@@ -49,12 +49,23 @@ class ComedorPedidoHeadModel extends Model
         $fecha = $fecha ?? date('Y-m-d');
         $row = $this->selectSum('total', 'ventas_total')
             ->selectSum('monto_pagado', 'cobrado_total')
-            ->selectSum('saldo', 'pendiente_total')
             ->selectCount('id', 'cantidad_pedidos')
             ->where('fecha', $fecha)
             ->where('anulado', 0)
             ->whereNotIn('estado', ['solicitud'])
             ->first();
-        return $row ?? [];
+        $row = $row ?? [];
+
+        // El KPI "Fiado" solo debe contar deuda real (fiado), no un contado ya confirmado
+        // pero todavía sin entregar (que también queda con saldo > 0 mientras tanto).
+        $fiado = $this->selectSum('saldo', 'pendiente_total')
+            ->where('fecha', $fecha)
+            ->where('anulado', 0)
+            ->where('tipo_pago', 'fiado')
+            ->whereNotIn('estado', ['solicitud'])
+            ->first();
+        $row['pendiente_total'] = $fiado['pendiente_total'] ?? 0;
+
+        return $row;
     }
 }

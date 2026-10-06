@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Models\ComedorMenuDiaModel;
 use App\Models\ComedorPedidoHeadModel;
 use App\Models\ComedorPedidoDetalleModel;
+use App\Models\ComedorClienteModel;
 use CodeIgniter\Controller;
 use CodeIgniter\HTTP\RequestInterface;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -15,6 +16,7 @@ class ComedorPublicoController extends Controller
     protected ComedorMenuDiaModel       $menuModel;
     protected ComedorPedidoHeadModel    $headModel;
     protected ComedorPedidoDetalleModel $detalleModel;
+    protected ComedorClienteModel       $clienteModel;
 
     public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
     {
@@ -23,6 +25,7 @@ class ComedorPublicoController extends Controller
         $this->menuModel    = new ComedorMenuDiaModel();
         $this->headModel    = new ComedorPedidoHeadModel();
         $this->detalleModel = new ComedorPedidoDetalleModel();
+        $this->clienteModel = new ComedorClienteModel();
     }
 
     public function index()
@@ -169,5 +172,46 @@ class ComedorPublicoController extends Controller
             $db->transRollback();
             return $this->response->setJSON(['ok' => false, 'msg' => 'Error al guardar. Intenta de nuevo.']);
         }
+    }
+
+    // Historial de pedidos del comensal logueado, con su saldo pendiente (debe) y vuelto pendiente (le deben).
+    public function historial()
+    {
+        $clienteId = session()->get('comedor_cliente_logged_in') ? session()->get('comedor_cliente_id') : null;
+        if (!$clienteId) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Debes iniciar sesión.']);
+        }
+
+        $cliente = $this->clienteModel->find($clienteId);
+
+        $rows = $this->headModel
+            ->select('comedor_pedidos_head.*, comedor_pedidos_detalles.item_nombre, comedor_pedidos_detalles.cantidad')
+            ->join('comedor_pedidos_detalles', 'comedor_pedidos_detalles.pedido_id = comedor_pedidos_head.id', 'left')
+            ->where('comedor_pedidos_head.cliente_id', $clienteId)
+            ->orderBy('comedor_pedidos_head.id', 'DESC')
+            ->findAll();
+
+        $agrupado = [];
+        foreach ($rows as $row) {
+            $id = $row['id'];
+            if (!isset($agrupado[$id])) {
+                $agrupado[$id] = $row;
+                $agrupado[$id]['numero_formateado'] = formatearNumeroPedido($row['numero']);
+                $agrupado[$id]['items'] = [];
+            }
+            if ($row['item_nombre']) {
+                $agrupado[$id]['items'][] = $row['cantidad'] . '× ' . $row['item_nombre'];
+            }
+        }
+
+        return $this->response->setJSON([
+            'ok'      => true,
+            'cliente' => [
+                'nombre'           => $cliente['nombre'],
+                'saldo_pendiente'  => $cliente['saldo_pendiente'],
+                'vuelto_pendiente' => $cliente['vuelto_pendiente'],
+            ],
+            'pedidos' => array_values($agrupado),
+        ]);
     }
 }
