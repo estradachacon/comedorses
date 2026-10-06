@@ -6,9 +6,12 @@
         <h4 class="mb-0">
             <i class="fa-solid fa-hand-holding-dollar mr-2 text-danger"></i><?= esc($title) ?>
         </h4>
-        <?php $totalDeudores = count(array_filter($comensales, fn($c) => (float) $c['saldo_pendiente'] > 0)); ?>
+        <?php
+            $totalDeudores = count(array_filter($comensales, fn($c) => (float) $c['saldo_pendiente'] > 0));
+            $totalVueltos  = count(array_filter($comensales, fn($c) => (float) ($c['vuelto_pendiente'] ?? 0) > 0));
+        ?>
         <span class="badge badge-danger badge-pill px-3 py-2" style="font-size:.85rem;">
-            <?= $totalDeudores ?> con deuda · <?= count($comensales) ?> comensal<?= count($comensales) !== 1 ? 'es' : '' ?>
+            <?= $totalDeudores ?> con deuda · <?= $totalVueltos ?> con vuelto pendiente · <?= count($comensales) ?> comensal<?= count($comensales) !== 1 ? 'es' : '' ?>
         </span>
     </div>
 
@@ -26,12 +29,16 @@
                         <th>Comensal</th>
                         <th>Teléfono</th>
                         <th class="text-right">Saldo Pendiente</th>
+                        <th class="text-right">Vuelto Pendiente</th>
                         <?php if (tienePermiso('registrar_pago_deudor_comedor')): ?><th class="text-center">Acciones</th><?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($comensales as $d): ?>
-                    <?php $tieneDeuda = (float) $d['saldo_pendiente'] > 0; ?>
+                    <?php
+                        $tieneDeuda  = (float) $d['saldo_pendiente'] > 0;
+                        $tieneVuelto = (float) ($d['vuelto_pendiente'] ?? 0) > 0;
+                    ?>
                     <tr>
                         <td class="font-weight-bold"><?= esc($d['nombre']) ?></td>
                         <td class="text-muted"><?= esc($d['telefono'] ?? '—') ?></td>
@@ -39,6 +46,17 @@
                             <?php if ($tieneDeuda): ?>
                                 <span class="badge badge-danger badge-pill px-2 py-1" style="font-size:.9rem;">
                                     $<?= number_format($d['saldo_pendiente'], 2) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="badge badge-light text-muted px-2 py-1" style="font-size:.9rem;">
+                                    $0.00
+                                </span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-right">
+                            <?php if ($tieneVuelto): ?>
+                                <span class="badge badge-info badge-pill px-2 py-1" style="font-size:.9rem;">
+                                    $<?= number_format($d['vuelto_pendiente'], 2) ?>
                                 </span>
                             <?php else: ?>
                                 <span class="badge badge-light text-muted px-2 py-1" style="font-size:.9rem;">
@@ -59,7 +77,16 @@
                                 data-id="<?= $d['id'] ?>" data-nombre="<?= esc($d['nombre'], 'attr') ?>">
                                 <i class="fa-solid fa-list"></i>
                             </button>
-                            <?php else: ?>
+                            <?php endif; ?>
+                            <?php if ($tieneVuelto): ?>
+                            <button class="btn btn-sm btn-info btn-vuelto"
+                                data-id="<?= $d['id'] ?>"
+                                data-nombre="<?= esc($d['nombre'], 'attr') ?>"
+                                data-vuelto="<?= $d['vuelto_pendiente'] ?>">
+                                <i class="fa-solid fa-hand-holding-dollar mr-1"></i>Dar Vuelto
+                            </button>
+                            <?php endif; ?>
+                            <?php if (!$tieneDeuda && !$tieneVuelto): ?>
                             <span class="text-success small"><i class="fa-solid fa-circle-check mr-1"></i>Al día</span>
                             <?php endif; ?>
                         </td>
@@ -105,6 +132,39 @@
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" id="btnConfirmarPago">
                     <i class="fa-solid fa-check mr-1"></i>Confirmar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Dar Vuelto -->
+<div class="modal fade" id="modalVuelto" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-hand-holding-dollar text-info mr-2"></i>
+                    Dar Vuelto — <span id="modalNombreVuelto"></span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2">
+                    <strong>Vuelto pendiente:</strong> <span id="modalVueltoTotal"></span>
+                </div>
+                <div class="form-group mb-0">
+                    <label>Monto que le vas a dar <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                        <input type="number" id="montoVuelto" class="form-control" step="0.01" min="0.01" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" id="btnConfirmarVuelto">
+                    <i class="fa-solid fa-check mr-1"></i>Confirmar
                 </button>
             </div>
         </div>
@@ -169,6 +229,48 @@ $('#btnConfirmarPago').on('click', function () {
         }
     }).always(function () {
         $('#btnConfirmarPago').prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar Pago');
+    });
+});
+
+let clienteVueltoActivo = null;
+
+$('.btn-vuelto').on('click', function () {
+    clienteVueltoActivo = {
+        id:     $(this).data('id'),
+        nombre: $(this).data('nombre'),
+        vuelto: parseFloat($(this).data('vuelto')),
+    };
+    $('#modalNombreVuelto').text(clienteVueltoActivo.nombre);
+    $('#modalVueltoTotal').text('$' + clienteVueltoActivo.vuelto.toFixed(2));
+    $('#montoVuelto').val('').attr('max', clienteVueltoActivo.vuelto);
+    $('#modalVuelto').modal('show');
+});
+
+$('#btnConfirmarVuelto').on('click', function () {
+    const monto = parseFloat($('#montoVuelto').val());
+    if (!monto || monto <= 0) {
+        Swal.fire('Monto inválido', 'Ingresa un monto mayor a cero.', 'warning');
+        return;
+    }
+    if (monto > clienteVueltoActivo.vuelto) {
+        Swal.fire('Monto inválido', 'No puede ser mayor al vuelto pendiente.', 'warning');
+        return;
+    }
+    $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+
+    $.post('/comedor/deudores/vuelto', {
+        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        cliente_id: clienteVueltoActivo.id,
+        monto:      monto,
+    }).done(function (res) {
+        if (res.ok) {
+            $('#modalVuelto').modal('hide');
+            Swal.fire('¡Vuelto entregado!', '', 'success').then(() => location.reload());
+        } else {
+            Swal.fire('Error', res.msg, 'error');
+        }
+    }).always(function () {
+        $('#btnConfirmarVuelto').prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar');
     });
 });
 

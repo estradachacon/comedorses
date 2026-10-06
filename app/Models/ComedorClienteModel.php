@@ -8,7 +8,7 @@ class ComedorClienteModel extends Model
 {
     protected $table         = 'comedor_clientes';
     protected $primaryKey    = 'id';
-    protected $allowedFields = ['nombre', 'identificacion', 'telefono', 'password', 'notas', 'activo', 'saldo_pendiente'];
+    protected $allowedFields = ['nombre', 'identificacion', 'telefono', 'password', 'notas', 'activo', 'saldo_pendiente', 'vuelto_pendiente'];
     protected $useTimestamps = true;
 
     public function deudores(): array

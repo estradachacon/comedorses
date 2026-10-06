@@ -221,10 +221,7 @@
 
                 <!-- STEP 2a: contado -->
                 <div id="stepContado" style="display:none;">
-                    <div class="form-group" id="grupoNombreContado">
-                        <label class="small font-weight-bold text-muted">TU NOMBRE</label>
-                        <input type="text" id="inputNombreContado" class="form-control" placeholder="Nombre completo" autocomplete="name">
-                    </div>
+                    <p class="mb-2">Pedirás al contado a nombre de <strong id="contadoLogNombre"></strong>.</p>
                     <div class="form-group">
                         <label class="small font-weight-bold text-muted">¿CÓMO PAGAS?</label>
                         <div class="btn-group btn-group-sm w-100 mb-2" role="group">
@@ -246,8 +243,8 @@
                     </div>
                 </div>
 
-                <!-- STEP 2c: fiado, sin cuenta -->
-                <div id="stepFiadoCuenta" style="display:none;">
+                <!-- STEP 2c: sin cuenta (requerida para cualquier pedido) -->
+                <div id="stepCuenta" style="display:none;">
                     <div class="btn-group btn-group-sm w-100 mb-3" role="group">
                         <button type="button" class="btn btn-outline-primary cuenta-tab active" data-tab="login">Iniciar sesión</button>
                         <button type="button" class="btn btn-outline-primary cuenta-tab" data-tab="registro">Crear cuenta</button>
@@ -503,7 +500,7 @@ function cartTotal() {
 function resetModalPedido() {
     tipoPagoActivo = null;
     $('#stepTipoPago').show();
-    $('#stepContado, #stepFiadoLogueado, #stepFiadoCuenta').hide();
+    $('#stepContado, #stepFiadoLogueado, #stepCuenta').hide();
     $('#btnEnviarPedido').hide();
     $('#btnPedidoAtras').text('Cancelar');
     $('#modalPedidoTitulo').text('¿Cómo vas a pagar?');
@@ -530,7 +527,7 @@ $('#btnPedir').on('click', function () {
     $('#resumenPedido').html(html);
 
     resetModalPedido();
-    $('#inputNombreContado, #inputNotasContado, #inputNotasFiadoLog, #inputMontoRecibido').val('');
+    $('#inputNotasContado, #inputNotasFiadoLog, #inputMontoRecibido').val('');
     $('.pago-exacto-btn').removeClass('active');
     $('.pago-exacto-btn[data-exacto="1"]').addClass('active');
     $('#inputMontoRecibido').hide();
@@ -542,11 +539,17 @@ $('#btnPedir').on('click', function () {
 $('#btnPagoContado').on('click', function () {
     tipoPagoActivo = 'contado';
     $('#stepTipoPago').hide();
-    $('#stepContado').show();
-    $('#grupoNombreContado').toggle(!clienteSesion);
-    $('#modalPedidoTitulo').text('Pago al contado');
     $('#btnPedidoAtras').text('Atrás');
-    $('#btnEnviarPedido').show();
+    if (clienteSesion) {
+        $('#contadoLogNombre').text(clienteSesion.nombre);
+        $('#stepContado').show();
+        $('#modalPedidoTitulo').text('Pago al contado');
+        $('#btnEnviarPedido').show();
+    } else {
+        $('#stepCuenta').show();
+        $('#modalPedidoTitulo').text('Necesitas una cuenta para pedir');
+        $('#btnEnviarPedido').hide();
+    }
 });
 
 // Elegir Fiado
@@ -560,8 +563,8 @@ $('#btnPagoFiado').on('click', function () {
         $('#modalPedidoTitulo').text('Pedido fiado');
         $('#btnEnviarPedido').show();
     } else {
-        $('#stepFiadoCuenta').show();
-        $('#modalPedidoTitulo').text('Necesitas una cuenta para fiar');
+        $('#stepCuenta').show();
+        $('#modalPedidoTitulo').text('Necesitas una cuenta para pedir');
         $('#btnEnviarPedido').hide();
     }
 });
@@ -593,12 +596,19 @@ $('.cuenta-tab').on('click', function () {
     $('#tabRegistro').toggle(tab === 'registro');
 });
 
-function pasarAFiadoLogueado(nombre) {
+// Después de iniciar sesión o crear cuenta, continúa en el paso que corresponda según lo elegido en STEP 1.
+function cuentaLista(nombre) {
     clienteSesion = { nombre: nombre };
-    $('#fiadoLogNombre').text(nombre);
-    $('#stepFiadoCuenta').hide();
-    $('#stepFiadoLogueado').show();
-    $('#modalPedidoTitulo').text('Pedido fiado');
+    $('#stepCuenta').hide();
+    if (tipoPagoActivo === 'fiado') {
+        $('#fiadoLogNombre').text(nombre);
+        $('#stepFiadoLogueado').show();
+        $('#modalPedidoTitulo').text('Pedido fiado');
+    } else {
+        $('#contadoLogNombre').text(nombre);
+        $('#stepContado').show();
+        $('#modalPedidoTitulo').text('Pago al contado');
+    }
     $('#btnEnviarPedido').show();
 }
 
@@ -616,7 +626,7 @@ $('#btnLoginCliente').on('click', function () {
         identificacion, password,
     }).done(function (r) {
         if (r.ok) {
-            pasarAFiadoLogueado(r.nombre);
+            cuentaLista(r.nombre);
         } else {
             Swal.fire('Error', r.msg, 'error');
         }
@@ -643,7 +653,7 @@ $('#btnRegistrarCliente').on('click', function () {
         nombre, identificacion, telefono, password,
     }).done(function (r) {
         if (r.ok) {
-            pasarAFiadoLogueado(r.nombre);
+            cuentaLista(r.nombre);
         } else {
             Swal.fire('Error', r.msg, 'error');
         }
@@ -678,12 +688,7 @@ $('#btnEnviarPedido').on('click', function () {
     };
 
     if (tipoPagoActivo === 'contado') {
-        const nombre = clienteSesion ? clienteSesion.nombre : $('#inputNombreContado').val().trim();
-        if (!nombre) {
-            $('#inputNombreContado').addClass('is-invalid').focus();
-            return;
-        }
-        payload.cliente_nombre = nombre;
+        payload.cliente_nombre = clienteSesion.nombre;
         payload.notas = $('#inputNotasContado').val();
 
         const exacto = $('.pago-exacto-btn.active').data('exacto') === 1;
@@ -712,7 +717,11 @@ $('#btnEnviarPedido').on('click', function () {
             $('#exitoExtra').text(tipoPagoActivo === 'fiado' ? 'Quedará como pendiente de pago (fiado).' : '');
             $('#modalExito').modal('show');
         } else if (r.requiere_cuenta) {
-            $('#btnPagoFiado').trigger('click');
+            $('#stepTipoPago, #stepContado, #stepFiadoLogueado').hide();
+            $('#stepCuenta').show();
+            $('#modalPedidoTitulo').text('Necesitas una cuenta para pedir');
+            $('#btnPedidoAtras').text('Atrás');
+            $('#btnEnviarPedido').hide();
             Swal.fire('Cuenta requerida', r.msg, 'info');
         } else {
             Swal.fire('Error', r.msg, 'error');

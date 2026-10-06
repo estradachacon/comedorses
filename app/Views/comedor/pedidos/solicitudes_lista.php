@@ -2,7 +2,7 @@
 <?= $this->section('content') ?>
 
 <div class="container-fluid px-2 px-sm-4">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3" style="gap:8px;">
+    <div class="d-flex flex-wrap justify-content-between mb-3" style="gap:8px;">
         <h4 class="mb-0" style="font-size:1.25rem;">
             <i class="fa-solid fa-paper-plane mr-2 text-warning"></i><?= esc($title) ?>
         </h4>

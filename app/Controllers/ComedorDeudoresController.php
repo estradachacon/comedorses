@@ -112,4 +112,34 @@ class ComedorDeudoresController extends BaseController
             return $this->response->setJSON(['ok' => false, 'msg' => $e->getMessage()]);
         }
     }
+
+    // Liquida (total o parcialmente) el vuelto que el comedor le quedó debiendo a un cliente.
+    public function entregarVuelto()
+    {
+        if (!tienePermiso('registrar_pago_deudor_comedor')) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Sin permiso.']);
+        }
+
+        $clienteId = (int) $this->request->getPost('cliente_id');
+        $monto     = (float) $this->request->getPost('monto');
+
+        $cliente = $this->clienteModel->find($clienteId);
+        if (!$cliente) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Comensal no encontrado.']);
+        }
+        if ($monto <= 0) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'El monto debe ser mayor a cero.']);
+        }
+        if ($monto > (float) $cliente['vuelto_pendiente']) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'El monto no puede ser mayor al vuelto pendiente.']);
+        }
+
+        $db = \Config\Database::connect();
+        $db->table('comedor_clientes')
+            ->where('id', $clienteId)
+            ->set('vuelto_pendiente', "GREATEST(0, vuelto_pendiente - {$monto})", false)
+            ->update();
+
+        return $this->response->setJSON(['ok' => true]);
+    }
 }

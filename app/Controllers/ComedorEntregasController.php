@@ -113,13 +113,14 @@ class ComedorEntregasController extends BaseController
             return $this->response->setJSON(['ok' => false, 'msg' => 'Este pedido ya fue entregado.']);
         }
 
-        $tipoPagoPost     = $this->request->getPost('tipo_pago');
-        $clienteIdPost    = $this->request->getPost('cliente_id');
+        $tipoPagoPost      = $this->request->getPost('tipo_pago');
+        $clienteIdPost     = $this->request->getPost('cliente_id');
         $montoRecibidoPost = $this->request->getPost('monto_recibido');
 
-        $tipoPago      = $tipoPagoPost ?: $pedido['tipo_pago'];
-        $clienteId     = ($clienteIdPost !== null && $clienteIdPost !== '') ? (int) $clienteIdPost : $pedido['cliente_id'];
-        $montoRecibido = ($montoRecibidoPost !== null && $montoRecibidoPost !== '') ? (float) $montoRecibidoPost : null;
+        $tipoPago        = $tipoPagoPost ?: $pedido['tipo_pago'];
+        $clienteId       = ($clienteIdPost !== null && $clienteIdPost !== '') ? (int) $clienteIdPost : $pedido['cliente_id'];
+        $montoRecibido   = ($montoRecibidoPost !== null && $montoRecibidoPost !== '') ? (float) $montoRecibidoPost : null;
+        $vueltoPendiente = (bool) $this->request->getPost('vuelto_pendiente');
 
         if ($tipoPago === 'fiado' && !$clienteId) {
             return $this->response->setJSON(['ok' => false, 'msg' => 'Para fiado debes asociar un comensal.']);
@@ -167,6 +168,16 @@ class ComedorEntregasController extends BaseController
                     'notas'      => 'Pago al momento de entrega',
                     'created_by' => session()->get('id'),
                 ]);
+
+                // Si el cajero marcó que no tenía el vuelto a mano, ese monto queda pendiente de
+                // darle al cliente, visible y liquidable desde /comedor/deudores.
+                if ($vueltoPendiente && $montoRecibido !== null && $montoRecibido > $total && $clienteId) {
+                    $vuelto = round($montoRecibido - $total, 2);
+                    $db->table('comedor_clientes')
+                        ->where('id', $clienteId)
+                        ->set('vuelto_pendiente', "vuelto_pendiente + {$vuelto}", false)
+                        ->update();
+                }
             } elseif ($clienteId) {
                 $db->table('comedor_clientes')
                     ->where('id', $clienteId)

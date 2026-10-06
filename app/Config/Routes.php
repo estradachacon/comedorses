@@ -75,6 +75,7 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {    // Grupo del Da
     $routes->get('comedor/deudores',             'ComedorDeudoresController::index');
     $routes->get('comedor/deudores/pendientes/(:num)', 'ComedorDeudoresController::pendientesCliente/$1');
     $routes->post('comedor/deudores/pagar',      'ComedorDeudoresController::registrarPago');
+    $routes->post('comedor/deudores/vuelto',     'ComedorDeudoresController::entregarVuelto');
 
     $routes->get('comedor/entregas',             'ComedorEntregasController::index');
     $routes->get('comedor/entregas/llamar',      'ComedorEntregasController::llamar');

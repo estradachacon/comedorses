@@ -53,9 +53,32 @@
     background: var(--sap-bg);
     padding: 10px 14px;
     margin-bottom: 6px;
+    transition: border-color .15s, background-color .15s, box-shadow .15s;
+}
+.entrega-card.selected {
+    border-color: #0a6ed1;
+    background: #eef6fb;
+    box-shadow: 0 0 0 1px #0a6ed1 inset;
 }
 .entrega-numero { font-size: .78rem; color: var(--sap-text-muted); font-family: 'Consolas', 'Courier New', monospace; }
 .entrega-item-row { font-size: .82rem; color: var(--sap-text-muted); }
+
+.chk-tuani {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    border: 2px solid #c6cbd1;
+    cursor: pointer;
+    accent-color: #0a6ed1;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+#filaSeleccion {
+    background: #eef6fb;
+    border: 1px solid #c9e2f5;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
 </style>
 
 <div class="container-fluid px-3">
@@ -78,6 +101,16 @@
             <button type="button" class="tab-modo" data-modo="item">Por item</button>
         </div>
         <span class="text-muted small" id="totalLlamado"></span>
+    </div>
+
+    <div id="filaSeleccion" class="d-flex flex-wrap justify-content-between mb-3" style="display:none;gap:10px;">
+        <label class="d-flex align-items-center mb-0" style="gap:8px;cursor:pointer;">
+            <input type="checkbox" id="chkSeleccionarTodos" class="chk-tuani">
+            <span class="small font-weight-bold" style="color:var(--sap-text);">Seleccionar todos</span>
+        </label>
+        <button type="button" class="btn btn-sm btn-primary" id="btnConfirmarMasivo" disabled>
+            <i class="fa-solid fa-check-double mr-1"></i>Confirmar seleccionados (<span id="cantSeleccionados">0</span>)
+        </button>
     </div>
 
     <div id="listaEntregas">
@@ -116,12 +149,18 @@
                     </div>
                 </div>
                 <div id="entContadoRow" class="form-group mb-2" style="display:none;">
-                    <label class="small font-weight-bold text-muted">¿CÓMO PAGÓ?</label>
-                    <div class="btn-group btn-group-sm w-100 mb-2" role="group">
-                        <button type="button" class="btn btn-outline-secondary pago-ent-exacto-btn active" data-exacto="1">Pago exacto</button>
-                        <button type="button" class="btn btn-outline-secondary pago-ent-exacto-btn" data-exacto="0">Dio cambio</button>
+                    <label class="small font-weight-bold text-muted">PAGÓ CON</label>
+                    <div class="input-group input-group-sm mb-1">
+                        <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                        <input type="number" min="0" step="0.01" id="entMontoRecibido" class="form-control">
                     </div>
-                    <input type="number" min="0" step="0.01" id="entMontoRecibido" class="form-control form-control-sm" placeholder="Pagó con $" style="display:none;">
+                    <div class="text-muted small mb-2" id="entCambioTexto"></div>
+                    <div class="custom-control custom-checkbox" id="entVueltoPendienteRow" style="display:none;">
+                        <input type="checkbox" class="custom-control-input" id="entVueltoPendienteCheck">
+                        <label class="custom-control-label small" for="entVueltoPendienteCheck">
+                            No tengo el vuelto ahora, se lo quedo debiendo
+                        </label>
+                    </div>
                 </div>
                 <div id="entClienteRow" style="display:none;position:relative;" class="form-group mb-0">
                     <label class="small font-weight-bold text-muted">COMENSAL REGISTRADO (para fiado)</label>
@@ -153,6 +192,7 @@ let modoVista = 'cliente';
 let datosActuales = [];
 let pedidoActivo = null;
 let pollTimer = null;
+let seleccionados = new Set();
 
 function fetchDatos(servicio) {
     return $.get('/comedor/entregas/llamar', { servicio });
@@ -160,6 +200,7 @@ function fetchDatos(servicio) {
 
 function cargar(servicio) {
     servicioActivo = servicio;
+    seleccionados.clear();
     $('.tab-horario').removeClass('active');
     $('.tab-horario[data-servicio="' + servicio + '"]').addClass('active');
     $('#listaEntregas').html('<div class="text-center text-muted py-4"><i class="fa-solid fa-spinner fa-spin"></i></div>');
@@ -168,6 +209,15 @@ function cargar(servicio) {
         render();
     });
     reiniciarPolling();
+}
+
+function actualizarBarraSeleccion() {
+    const haySolicitudes = datosActuales.some(p => p.estado === 'solicitud');
+    $('#filaSeleccion').toggle(modoVista === 'cliente' && haySolicitudes);
+    $('#cantSeleccionados').text(seleccionados.size);
+    $('#btnConfirmarMasivo').prop('disabled', seleccionados.size === 0);
+    const totalSolicitudes = datosActuales.filter(p => p.estado === 'solicitud').length;
+    $('#chkSeleccionarTodos').prop('checked', totalSolicitudes > 0 && seleccionados.size === totalSolicitudes);
 }
 
 // Revisa cada pocos segundos si hay pedidos nuevos o si alguien (otro cajero, otro dispositivo)
@@ -196,6 +246,7 @@ function aplicarDiff(data) {
     // Quitar los que ya no están (los procesó alguien más, u otro dispositivo)
     datosActuales.forEach(p => {
         if (!idsNuevos.includes(p.id)) {
+            seleccionados.delete(p.id);
             $('#entregaCard_' + p.id).fadeOut(250, function () {
                 $(this).remove();
                 if (!$('#listaEntregas .entrega-card').length) renderPorCliente();
@@ -218,6 +269,7 @@ function aplicarDiff(data) {
 
     datosActuales = data;
     $('#totalLlamado').text(data.length + ' pedido' + (data.length !== 1 ? 's' : ''));
+    actualizarBarraSeleccion();
 }
 
 function render() {
@@ -236,6 +288,15 @@ function formatFechaHora(fechaStr) {
     return partes[2] + '/' + partes[1] + ' ' + (h || '').slice(0, 5);
 }
 
+function infoPagoHtml(p) {
+    if (p.tipo_pago === 'fiado') return '';
+    const total = parseFloat(p.total);
+    const monto = parseFloat(p.monto_recibido);
+    return (monto && monto > total)
+        ? `<div class="text-muted small">Paga con $${monto.toFixed(2)} · Cambio $${(monto - total).toFixed(2)}</div>`
+        : `<div class="text-muted small">Pago exacto</div>`;
+}
+
 function cardHtml(p) {
     const itemsHtml = p.items.map(it =>
         `<div class="entrega-item-row">${parseFloat(it.cantidad)}× ${it.nombre}</div>`
@@ -249,16 +310,24 @@ function cardHtml(p) {
                 <i class="fa-solid fa-check mr-1"></i>Confirmar
            </button>`
         : '';
+    const estaSeleccionado = p.estado === 'solicitud' && seleccionados.has(p.id);
+    const checkboxHtml = p.estado === 'solicitud'
+        ? `<input type="checkbox" class="chk-tuani chk-solicitud" data-id="${p.id}" ${estaSeleccionado ? 'checked' : ''}>`
+        : '<span style="display:inline-block;width:22px;flex-shrink:0;"></span>';
 
     return `
-    <div class="entrega-card d-flex justify-content-between" id="entregaCard_${p.id}">
-        <div style="min-width:0;flex:1;">
-            <div class="d-flex flex-wrap" style="gap:6px;">
-                <span class="font-weight-bold" style="font-size:.9rem;">${p.cliente_nombre}</span>
-                ${tipoTag} ${estadoTag}
+    <div class="entrega-card d-flex justify-content-between${estaSeleccionado ? ' selected' : ''}" id="entregaCard_${p.id}">
+        <div class="d-flex" style="min-width:0;flex:1;gap:10px;">
+            ${checkboxHtml}
+            <div style="min-width:0;flex:1;">
+                <div class="d-flex flex-wrap" style="gap:6px;">
+                    <span class="font-weight-bold" style="font-size:.9rem;">${p.cliente_nombre}</span>
+                    ${tipoTag} ${estadoTag}
+                </div>
+                <div class="entrega-numero">${p.numero_formateado} · pedido a las ${formatFechaHora(p.created_at)}</div>
+                ${infoPagoHtml(p)}
+                <div class="mt-1">${itemsHtml}</div>
             </div>
-            <div class="entrega-numero">${p.numero_formateado} · pedido a las ${formatFechaHora(p.created_at)}</div>
-            <div class="mt-1">${itemsHtml}</div>
         </div>
         <div class="text-right ml-2 flex-shrink-0">
             <div class="font-weight-bold">$${parseFloat(p.total).toFixed(2)}</div>
@@ -276,12 +345,15 @@ function renderPorCliente() {
     $('#totalLlamado').text(datosActuales.length + ' pedido' + (datosActuales.length !== 1 ? 's' : ''));
     if (!datosActuales.length) {
         $('#listaEntregas').html('<div class="text-center text-muted py-5">No hay pedidos pendientes de entregar para este horario.</div>');
+        actualizarBarraSeleccion();
         return;
     }
     $('#listaEntregas').html(datosActuales.map(cardHtml).join(''));
+    actualizarBarraSeleccion();
 }
 
 function renderPorItem() {
+    $('#filaSeleccion').hide();
     const totales = {};
     datosActuales.forEach(p => {
         p.items.forEach(it => {
@@ -340,10 +412,9 @@ $(document).on('click', '.btn-entregar', function () {
 
     $('#entContadoRow').toggle(!esFiado);
     const montoPrevio = parseFloat(pedidoActivo.monto_recibido);
-    const tieneCambioPrevio = !esFiado && montoPrevio && montoPrevio > parseFloat(pedidoActivo.total);
-    $('.pago-ent-exacto-btn').removeClass('active');
-    $('.pago-ent-exacto-btn[data-exacto="' + (tieneCambioPrevio ? '0' : '1') + '"]').addClass('active');
-    $('#entMontoRecibido').toggle(tieneCambioPrevio).val(tieneCambioPrevio ? montoPrevio : '');
+    const total = parseFloat(pedidoActivo.total);
+    $('#entMontoRecibido').val(montoPrevio && montoPrevio > total ? montoPrevio : total);
+    actualizarCambioEntrega();
 
     $('#modalEntregar').modal('show');
 });
@@ -357,12 +428,71 @@ $('.tipo-ent-btn').on('click', function () {
     if (!esFiado) $('#entClienteInput,#entClienteId').val('');
 });
 
-$('.pago-ent-exacto-btn').on('click', function () {
-    $('.pago-ent-exacto-btn').removeClass('active');
-    $(this).addClass('active');
-    const exacto = $(this).data('exacto') === 1;
-    $('#entMontoRecibido').toggle(!exacto);
-    if (exacto) $('#entMontoRecibido').val('');
+// Calcula el cambio en vivo y muestra el checkbox de "vuelto pendiente" solo si hay cambio.
+function actualizarCambioEntrega() {
+    const total = parseFloat(pedidoActivo?.total) || 0;
+    const monto = parseFloat($('#entMontoRecibido').val());
+    const cambio = (monto || 0) - total;
+
+    if (!monto || cambio <= 0) {
+        $('#entCambioTexto').text(monto ? 'Pago exacto.' : '');
+        $('#entVueltoPendienteRow').hide();
+        $('#entVueltoPendienteCheck').prop('checked', false);
+    } else {
+        $('#entCambioTexto').text('Cambio a entregar: $' + cambio.toFixed(2));
+        $('#entVueltoPendienteRow').show();
+    }
+}
+
+$('#entMontoRecibido').on('input', actualizarCambioEntrega);
+
+// ── Selección múltiple para confirmar varios de un solo golpe ───────────
+$(document).on('change', '.chk-solicitud', function () {
+    const id = $(this).data('id');
+    if (this.checked) seleccionados.add(id); else seleccionados.delete(id);
+    $(this).closest('.entrega-card').toggleClass('selected', this.checked);
+    actualizarBarraSeleccion();
+});
+
+$('#chkSeleccionarTodos').on('change', function () {
+    const marcar = this.checked;
+    $('.chk-solicitud').prop('checked', marcar).each(function () {
+        const id = $(this).data('id');
+        if (marcar) seleccionados.add(id); else seleccionados.delete(id);
+        $(this).closest('.entrega-card').toggleClass('selected', marcar);
+    });
+    actualizarBarraSeleccion();
+});
+
+$('#btnConfirmarMasivo').on('click', function () {
+    const ids = Array.from(seleccionados);
+    if (!ids.length) return;
+    const btn = $(this);
+
+    Swal.fire({
+        title: `¿Confirmar ${ids.length} pedido${ids.length !== 1 ? 's' : ''}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, confirmar',
+        cancelButtonText: 'Cancelar',
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+
+        const peticiones = ids.map(id =>
+            $.post('/comedor/pedidos/confirmar/' + id, { [csrfName]: csrfHash })
+        );
+        Promise.allSettled(peticiones).then(resultados => {
+            const exitosos = resultados.filter(r => r.status === 'fulfilled' && r.value && r.value.ok).length;
+            seleccionados.clear();
+            Swal.fire({
+                icon: exitosos === ids.length ? 'success' : 'warning',
+                title: `${exitosos} de ${ids.length} confirmados`,
+                timer: 1500,
+                showConfirmButton: false,
+            }).then(() => cargar(servicioActivo));
+        });
+    });
 });
 
 // ── Confirmar (paso 1, sin marcar entregado) ────────────────────────────
@@ -423,22 +553,22 @@ $('#btnConfirmarEntrega').on('click', function () {
     }
 
     let montoRecibido = '';
+    let vueltoPendiente = 0;
     if (tipoPago === 'contado') {
-        const exacto = $('.pago-ent-exacto-btn.active').data('exacto') === 1;
-        if (!exacto) {
-            const monto = parseFloat($('#entMontoRecibido').val());
-            if (!monto || monto < parseFloat(pedidoActivo.total)) {
-                Swal.fire('Monto inválido', 'Ingresa con cuánto pagó (debe ser mayor o igual al total).', 'warning');
-                return;
-            }
-            montoRecibido = monto;
+        const monto = parseFloat($('#entMontoRecibido').val());
+        if (!monto || monto < parseFloat(pedidoActivo.total)) {
+            Swal.fire('Monto inválido', 'Ingresa con cuánto pagó (debe ser mayor o igual al total).', 'warning');
+            return;
         }
+        montoRecibido = monto;
+        vueltoPendiente = $('#entVueltoPendienteCheck').is(':checked') ? 1 : 0;
     }
 
     $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
     $.post('/comedor/entregas/marcar/' + pedidoActivo.id, {
         [csrfName]: csrfHash,
-        tipo_pago: tipoPago, cliente_id: clienteId, monto_recibido: montoRecibido,
+        tipo_pago: tipoPago, cliente_id: clienteId,
+        monto_recibido: montoRecibido, vuelto_pendiente: vueltoPendiente,
     }).done(res => {
         if (res.ok) {
             $('#modalEntregar').modal('hide');

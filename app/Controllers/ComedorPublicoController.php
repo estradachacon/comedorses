@@ -58,7 +58,6 @@ class ComedorPublicoController extends Controller
     {
         $itemsJson      = $this->request->getPost('items_json');
         $items          = json_decode($itemsJson, true);
-        $clienteNombre  = trim($this->request->getPost('cliente_nombre'));
         $notas          = $this->request->getPost('notas');
         $tipoPago       = $this->request->getPost('tipo_pago') === 'fiado' ? 'fiado' : 'contado';
         $montoRecibido  = $this->request->getPost('monto_recibido');
@@ -67,22 +66,22 @@ class ComedorPublicoController extends Controller
         $clienteSesionId     = session()->get('comedor_cliente_logged_in') ? session()->get('comedor_cliente_id') : null;
         $clienteSesionNombre = session()->get('comedor_cliente_nombre');
 
-        if ($tipoPago === 'fiado' && !$clienteSesionId) {
+        // Toda solicitud (contado o fiado) requiere cuenta: es lo que permite llevar
+        // el control de lo pagado, lo que debe el cliente y el vuelto que se le debe.
+        if (!$clienteSesionId) {
             return $this->response->setJSON([
                 'ok'              => false,
                 'requiere_cuenta' => true,
-                'msg'             => 'Debes iniciar sesión o crear una cuenta para pedir fiado.',
+                'msg'             => 'Debes iniciar sesión o crear una cuenta para pedir.',
             ]);
         }
 
-        if ($clienteSesionId) {
-            $clienteNombre = $clienteSesionNombre;
-        }
+        $clienteNombre = $clienteSesionNombre;
 
-        if (empty($items) || !$clienteNombre) {
+        if (empty($items)) {
             return $this->response->setJSON([
                 'ok'  => false,
-                'msg' => 'Completa tu nombre y selecciona al menos un item.',
+                'msg' => 'Selecciona al menos un item.',
             ]);
         }
 
