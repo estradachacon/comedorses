@@ -10,7 +10,7 @@ class ComedorPedidoHeadModel extends Model
     protected $primaryKey    = 'id';
     protected $allowedFields = [
         'numero', 'cliente_id', 'cliente_nombre', 'fecha',
-        'total', 'monto_pagado', 'saldo', 'tipo_pago', 'estado', 'notas',
+        'total', 'monto_pagado', 'saldo', 'tipo_pago', 'monto_recibido', 'estado', 'notas',
         'anulado', 'anulado_por', 'fecha_anulacion', 'created_by',
     ];
     protected $useTimestamps = true;

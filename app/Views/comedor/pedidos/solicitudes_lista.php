@@ -35,6 +35,22 @@
                         <span class="badge badge-warning text-dark">Solicitud</span>
                     </div>
 
+                    <div class="mb-2">
+                        <?php if ($s['tipo_pago'] === 'fiado'): ?>
+                            <span class="badge badge-info"><i class="fa-solid fa-clock mr-1"></i>Fiado</span>
+                        <?php else: ?>
+                            <span class="badge badge-success"><i class="fa-solid fa-money-bill-wave mr-1"></i>Contado</span>
+                            <?php if (!empty($s['monto_recibido']) && (float) $s['monto_recibido'] > (float) $s['total']): ?>
+                                <span class="text-muted small ml-1">
+                                    Paga con $<?= number_format($s['monto_recibido'], 2) ?>
+                                    · Cambio $<?= number_format($s['monto_recibido'] - $s['total'], 2) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-muted small ml-1">Pago exacto</span>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+
                     <?php if (!empty($s['items'])): ?>
                     <ul class="list-unstyled mb-2" style="font-size:.82rem;">
                         <?php foreach ($s['items'] as $it): ?>
@@ -57,7 +73,9 @@
                             data-id="<?= $s['id'] ?>"
                             data-nombre="<?= esc($s['cliente_nombre'], 'attr') ?>"
                             data-total="<?= $s['total'] ?>"
-                            data-numero="<?= esc($s['numero'], 'attr') ?>">
+                            data-numero="<?= esc($s['numero'], 'attr') ?>"
+                            data-tipo-pago="<?= esc($s['tipo_pago'], 'attr') ?>"
+                            data-cliente-id="<?= $s['cliente_id'] ?? '' ?>">
                             <i class="fa-solid fa-check mr-1"></i>Confirmar
                         </button>
                         <button class="btn btn-sm btn-outline-danger btn-anular-sol" data-id="<?= $s['id'] ?>">
@@ -125,19 +143,31 @@ let solicitudActiva = null;
 // Abrir modal confirmar
 $(document).on('click', '.btn-confirmar', function () {
     solicitudActiva = {
-        id:     $(this).data('id'),
-        nombre: $(this).data('nombre'),
-        total:  parseFloat($(this).data('total')),
-        numero: $(this).data('numero'),
+        id:        $(this).data('id'),
+        nombre:    $(this).data('nombre'),
+        total:     parseFloat($(this).data('total')),
+        numero:    $(this).data('numero'),
+        tipoPago:  $(this).data('tipo-pago'),
+        clienteId: $(this).data('cliente-id'),
     };
     $('#confCliente').text(solicitudActiva.nombre);
     $('#confDetalle').text('Pedido ' + solicitudActiva.numero);
     $('#confTotal').text('Total: $' + solicitudActiva.total.toFixed(2));
-    $('.tipo-btn[data-tipo="contado"]').addClass('active');
-    $('.tipo-btn[data-tipo="fiado"]').removeClass('active');
-    $('#rowClienteFiado').hide();
-    $('#inputClienteFiado').val('');
-    $('#clienteFiadoId').val('');
+
+    // Precargar lo que el cliente ya eligió al pedir (el cajero puede corregirlo)
+    const esFiado = solicitudActiva.tipoPago === 'fiado';
+    $('.tipo-btn').removeClass('active');
+    $('.tipo-btn[data-tipo="' + (esFiado ? 'fiado' : 'contado') + '"]').addClass('active');
+
+    if (esFiado && solicitudActiva.clienteId) {
+        $('#rowClienteFiado').show();
+        $('#inputClienteFiado').val(solicitudActiva.nombre);
+        $('#clienteFiadoId').val(solicitudActiva.clienteId);
+    } else {
+        $('#rowClienteFiado').toggle(esFiado);
+        $('#inputClienteFiado').val('');
+        $('#clienteFiadoId').val('');
+    }
     $('#modalConfirmar').modal('show');
 });
 

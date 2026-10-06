@@ -210,8 +210,16 @@ class ComedorPedidosController extends BaseController
             return $this->response->setJSON(['ok' => false, 'msg' => 'Solicitud no válida.']);
         }
 
-        $tipoPago  = $this->request->getPost('tipo_pago');
-        $clienteId = (int)($this->request->getPost('cliente_id')) ?: null;
+        $tipoPagoPost  = $this->request->getPost('tipo_pago');
+        $clienteIdPost = $this->request->getPost('cliente_id');
+
+        // Si el cajero no envía valores, se respeta lo que el cliente ya eligió al pedir.
+        $tipoPago  = $tipoPagoPost ?: $pedido['tipo_pago'];
+        $clienteId = ($clienteIdPost !== null && $clienteIdPost !== '') ? (int) $clienteIdPost : $pedido['cliente_id'];
+
+        if ($tipoPago === 'fiado' && !$clienteId) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Para confirmar un pedido fiado debes asociar un comensal.']);
+        }
 
         $db = \Config\Database::connect();
         $db->transBegin();
@@ -226,7 +234,7 @@ class ComedorPedidosController extends BaseController
                 'monto_pagado' => $montoPagado,
                 'saldo'        => $saldo,
                 'estado'       => $estado,
-                'cliente_id'   => $clienteId ?: $pedido['cliente_id'],
+                'cliente_id'   => $clienteId,
                 'created_by'   => session()->get('id'),
             ]);
 

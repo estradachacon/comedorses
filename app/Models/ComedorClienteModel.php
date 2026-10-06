@@ -8,7 +8,7 @@ class ComedorClienteModel extends Model
 {
     protected $table         = 'comedor_clientes';
     protected $primaryKey    = 'id';
-    protected $allowedFields = ['nombre', 'identificacion', 'telefono', 'notas', 'activo', 'saldo_pendiente'];
+    protected $allowedFields = ['nombre', 'identificacion', 'telefono', 'password', 'notas', 'activo', 'saldo_pendiente'];
     protected $useTimestamps = true;
 
     public function deudores(): array
@@ -17,5 +17,10 @@ class ComedorClienteModel extends Model
             ->where('activo', 1)
             ->orderBy('saldo_pendiente', 'DESC')
             ->findAll();
+    }
+
+    public function buscarPorIdentificacion(string $identificacion): ?array
+    {
+        return $this->where('identificacion', trim($identificacion))->first();
     }
 }

@@ -15,6 +15,11 @@ $routes->get('api/backup/estrada', 'Api\BackupController::index');
 $routes->get('menu',          'ComedorPublicoController::index');
 $routes->post('menu/guardar', 'ComedorPublicoController::guardar');
 
+// Cuenta del comensal (independiente de los usuarios del sistema, sin auth)
+$routes->post('menu/cuenta/registrar', 'ComedorClienteAuthController::registrar');
+$routes->post('menu/cuenta/login',     'ComedorClienteAuthController::login');
+$routes->post('menu/cuenta/logout',    'ComedorClienteAuthController::logout');
+
 // Recuperación de contraseña (SIN AUTH)
 $routes->group('auth', function ($routes) {
     $routes->post('send-reset-code', 'AuthController::sendResetCode');

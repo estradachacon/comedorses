@@ -9,6 +9,13 @@
 <?= $this->endSection() ?>
 <?php return; endif; ?>
 
+<?php if ($clienteSesion): ?>
+<div class="d-flex justify-content-between align-items-center px-3 py-2" style="background:#fff;border-bottom:1px solid #e9ecef;font-size:.8rem;">
+    <span><i class="fa-solid fa-circle-user mr-1 text-primary"></i>Hola, <strong><?= esc($clienteSesion['nombre']) ?></strong></span>
+    <a href="#" id="btnLogoutCliente" class="text-danger">Cerrar sesión</a>
+</div>
+<?php endif; ?>
+
 <!-- Pills de categorías -->
 <div class="cat-pills" id="catPills">
     <button class="cat-pill active" data-cat="todos">Todos</button>
@@ -66,28 +73,94 @@
     </button>
 </div>
 
-<!-- Modal: ingresar nombre -->
-<div class="modal fade" id="modalNombre" tabindex="-1">
+<!-- Modal: flujo de pago (tipo de pago -> contado/fiado -> cuenta) -->
+<div class="modal fade" id="modalPedido" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0" style="border-radius:18px;">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title font-weight-bold">
-                    <i class="fa-solid fa-user mr-2 text-primary"></i>¿A nombre de quién?
-                </h5>
+                <h5 class="modal-title font-weight-bold" id="modalPedidoTitulo">¿Cómo vas a pagar?</h5>
             </div>
             <div class="modal-body pt-2">
-                <input type="text" id="inputNombre" class="form-control form-control-lg"
-                       placeholder="Tu nombre completo" autocomplete="name">
-                <div class="form-group mt-3 mb-0">
-                    <textarea id="inputNotas" class="form-control" rows="2"
-                              placeholder="¿Alguna nota? (opcional)"></textarea>
+                <div id="resumenPedido" class="mb-3"></div>
+
+                <!-- STEP 1: elegir tipo de pago -->
+                <div id="stepTipoPago">
+                    <button type="button" class="btn btn-outline-success btn-block btn-lg mb-2" id="btnPagoContado">
+                        <i class="fa-solid fa-money-bill-wave mr-2"></i>Contado
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-block btn-lg" id="btnPagoFiado">
+                        <i class="fa-solid fa-clock mr-2"></i>Fiado
+                    </button>
                 </div>
-                <!-- Resumen del pedido -->
-                <div class="mt-3" id="resumenPedido"></div>
+
+                <!-- STEP 2a: contado -->
+                <div id="stepContado" style="display:none;">
+                    <div class="form-group" id="grupoNombreContado">
+                        <label class="small font-weight-bold text-muted">TU NOMBRE</label>
+                        <input type="text" id="inputNombreContado" class="form-control" placeholder="Nombre completo" autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label class="small font-weight-bold text-muted">¿CÓMO PAGAS?</label>
+                        <div class="btn-group btn-group-sm w-100 mb-2" role="group">
+                            <button type="button" class="btn btn-outline-secondary pago-exacto-btn active" data-exacto="1">Pago exacto</button>
+                            <button type="button" class="btn btn-outline-secondary pago-exacto-btn" data-exacto="0">Necesito cambio</button>
+                        </div>
+                        <input type="number" min="0" step="0.01" id="inputMontoRecibido" class="form-control" placeholder="Pagas con $" style="display:none;">
+                    </div>
+                    <div class="form-group mb-0">
+                        <textarea id="inputNotasContado" class="form-control" rows="2" placeholder="¿Alguna nota? (opcional)"></textarea>
+                    </div>
+                </div>
+
+                <!-- STEP 2b: fiado, ya logueado -->
+                <div id="stepFiadoLogueado" style="display:none;">
+                    <p class="mb-2">Pedirás fiado a nombre de <strong id="fiadoLogNombre"></strong>.</p>
+                    <div class="form-group mb-0">
+                        <textarea id="inputNotasFiadoLog" class="form-control" rows="2" placeholder="¿Alguna nota? (opcional)"></textarea>
+                    </div>
+                </div>
+
+                <!-- STEP 2c: fiado, sin cuenta -->
+                <div id="stepFiadoCuenta" style="display:none;">
+                    <div class="btn-group btn-group-sm w-100 mb-3" role="group">
+                        <button type="button" class="btn btn-outline-primary cuenta-tab active" data-tab="login">Iniciar sesión</button>
+                        <button type="button" class="btn btn-outline-primary cuenta-tab" data-tab="registro">Crear cuenta</button>
+                    </div>
+
+                    <div id="tabLogin">
+                        <div class="form-group">
+                            <input type="text" id="loginDui" class="form-control" placeholder="DUI">
+                        </div>
+                        <div class="form-group">
+                            <input type="password" id="loginPassword" class="form-control" placeholder="Contraseña">
+                        </div>
+                        <button type="button" class="btn btn-primary btn-block" id="btnLoginCliente">
+                            <i class="fa-solid fa-right-to-bracket mr-1"></i>Iniciar sesión
+                        </button>
+                    </div>
+
+                    <div id="tabRegistro" style="display:none;">
+                        <div class="form-group">
+                            <input type="text" id="regNombre" class="form-control" placeholder="Nombre completo">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="regDui" class="form-control" placeholder="DUI">
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="regTelefono" class="form-control" placeholder="Teléfono (opcional)">
+                        </div>
+                        <div class="form-group">
+                            <input type="password" id="regPassword" class="form-control" placeholder="Contraseña">
+                        </div>
+                        <button type="button" class="btn btn-primary btn-block" id="btnRegistrarCliente">
+                            <i class="fa-solid fa-user-plus mr-1"></i>Crear cuenta
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary btn-block mt-1" id="btnConfirmarSolicitud">
+                <button type="button" class="btn btn-outline-secondary" id="btnPedidoAtras">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-block mt-1" id="btnEnviarPedido" style="display:none;">
                     <i class="fa-solid fa-check mr-1"></i>Enviar Solicitud
                 </button>
             </div>
@@ -103,10 +176,12 @@
                 <div style="font-size:3.5rem;">🎉</div>
                 <h4 class="font-weight-bold mt-2">¡Solicitud enviada!</h4>
                 <p class="text-muted mb-1">Tu pedido fue recibido.</p>
-                <p class="mb-3">
+                <p class="mb-1">
                     <span class="badge badge-success px-3 py-2" style="font-size:1rem;" id="exitoNumero"></span>
                 </p>
-                <p class="text-muted small">El cajero lo confirmará en breve. Total: <strong id="exitoTotal"></strong></p>
+                <p class="text-muted small mb-1">Total: <strong id="exitoTotal"></strong></p>
+                <p class="text-muted small mb-3" id="exitoExtra"></p>
+                <p class="text-muted small">El cajero lo confirmará en breve.</p>
                 <button class="btn btn-primary btn-block mt-3" id="btnNuevoPedido">
                     <i class="fa-solid fa-rotate-right mr-1"></i>Hacer otro pedido
                 </button>
@@ -117,6 +192,8 @@
 
 <script>
 const cart = {};
+let clienteSesion = <?= $clienteSesion ? json_encode($clienteSesion) : 'null' ?>;
+let tipoPagoActivo = null;
 
 function formatMoney(v) { return '$' + parseFloat(v).toFixed(2); }
 
@@ -199,7 +276,20 @@ $('.cat-pill').on('click', function () {
     $('html,body').animate({ scrollTop: $('#menuContent').offset().top - 80 }, 150);
 });
 
-// Abrir modal con resumen
+function cartTotal() {
+    return Object.values(cart).reduce((s, it) => s + it.precio * it.cantidad, 0);
+}
+
+function resetModalPedido() {
+    tipoPagoActivo = null;
+    $('#stepTipoPago').show();
+    $('#stepContado, #stepFiadoLogueado, #stepFiadoCuenta').hide();
+    $('#btnEnviarPedido').hide();
+    $('#btnPedidoAtras').text('Cancelar');
+    $('#modalPedidoTitulo').text('¿Cómo vas a pagar?');
+}
+
+// Abrir modal de pedido con resumen
 $('#btnPedir').on('click', function () {
     const keys = Object.keys(cart);
     if (!keys.length) return;
@@ -211,25 +301,145 @@ $('#btnPedir').on('click', function () {
             <span class="text-success">${formatMoney(cart[id].precio * cart[id].cantidad)}</span>
         </div>`;
     });
-    const total = keys.reduce((s, id) => s + cart[id].precio * cart[id].cantidad, 0);
     html += `<div class="d-flex justify-content-between font-weight-bold border-top pt-1 mt-1">
-        <span>Total</span><span>${formatMoney(total)}</span></div>`;
+        <span>Total</span><span>${formatMoney(cartTotal())}</span></div>`;
     html += '</div>';
     $('#resumenPedido').html(html);
-    $('#inputNombre').val('');
-    $('#modalNombre').modal('show');
-    setTimeout(() => $('#inputNombre').focus(), 400);
+
+    resetModalPedido();
+    $('#inputNombreContado, #inputNotasContado, #inputNotasFiadoLog, #inputMontoRecibido').val('');
+    $('.pago-exacto-btn').removeClass('active');
+    $('.pago-exacto-btn[data-exacto="1"]').addClass('active');
+    $('#inputMontoRecibido').hide();
+
+    $('#modalPedido').modal('show');
 });
 
-// Enviar solicitud
-$('#btnConfirmarSolicitud').on('click', function () {
-    const nombre = $('#inputNombre').val().trim();
-    if (!nombre) {
-        $('#inputNombre').addClass('is-invalid').focus();
+// Elegir Contado
+$('#btnPagoContado').on('click', function () {
+    tipoPagoActivo = 'contado';
+    $('#stepTipoPago').hide();
+    $('#stepContado').show();
+    $('#grupoNombreContado').toggle(!clienteSesion);
+    $('#modalPedidoTitulo').text('Pago al contado');
+    $('#btnPedidoAtras').text('Atrás');
+    $('#btnEnviarPedido').show();
+});
+
+// Elegir Fiado
+$('#btnPagoFiado').on('click', function () {
+    tipoPagoActivo = 'fiado';
+    $('#stepTipoPago').hide();
+    $('#btnPedidoAtras').text('Atrás');
+    if (clienteSesion) {
+        $('#fiadoLogNombre').text(clienteSesion.nombre);
+        $('#stepFiadoLogueado').show();
+        $('#modalPedidoTitulo').text('Pedido fiado');
+        $('#btnEnviarPedido').show();
+    } else {
+        $('#stepFiadoCuenta').show();
+        $('#modalPedidoTitulo').text('Necesitas una cuenta para fiar');
+        $('#btnEnviarPedido').hide();
+    }
+});
+
+// Volver / cancelar
+$('#btnPedidoAtras').on('click', function () {
+    if ($('#stepTipoPago').is(':visible')) {
+        $('#modalPedido').modal('hide');
+    } else {
+        resetModalPedido();
+    }
+});
+
+// Toggle pago exacto / cambio
+$('.pago-exacto-btn').on('click', function () {
+    $('.pago-exacto-btn').removeClass('active');
+    $(this).addClass('active');
+    const exacto = $(this).data('exacto') === 1;
+    $('#inputMontoRecibido').toggle(!exacto);
+    if (exacto) $('#inputMontoRecibido').val('');
+});
+
+// Tabs login / registro (fiado sin cuenta)
+$('.cuenta-tab').on('click', function () {
+    $('.cuenta-tab').removeClass('active');
+    $(this).addClass('active');
+    const tab = $(this).data('tab');
+    $('#tabLogin').toggle(tab === 'login');
+    $('#tabRegistro').toggle(tab === 'registro');
+});
+
+function pasarAFiadoLogueado(nombre) {
+    clienteSesion = { nombre: nombre };
+    $('#fiadoLogNombre').text(nombre);
+    $('#stepFiadoCuenta').hide();
+    $('#stepFiadoLogueado').show();
+    $('#modalPedidoTitulo').text('Pedido fiado');
+    $('#btnEnviarPedido').show();
+}
+
+// Login de cliente
+$('#btnLoginCliente').on('click', function () {
+    const identificacion = $('#loginDui').val().trim();
+    const password = $('#loginPassword').val();
+    if (!identificacion || !password) {
+        Swal.fire('Datos requeridos', 'Ingresa tu DUI y contraseña.', 'warning');
         return;
     }
-    $('#inputNombre').removeClass('is-invalid');
+    $(this).prop('disabled', true);
+    $.post('<?= base_url('menu/cuenta/login') ?>', {
+        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        identificacion, password,
+    }).done(function (r) {
+        if (r.ok) {
+            pasarAFiadoLogueado(r.nombre);
+        } else {
+            Swal.fire('Error', r.msg, 'error');
+        }
+    }).fail(function () {
+        Swal.fire('Error', 'No se pudo iniciar sesión.', 'error');
+    }).always(function () {
+        $('#btnLoginCliente').prop('disabled', false);
+    });
+});
 
+// Registro de cliente
+$('#btnRegistrarCliente').on('click', function () {
+    const nombre = $('#regNombre').val().trim();
+    const identificacion = $('#regDui').val().trim();
+    const telefono = $('#regTelefono').val().trim();
+    const password = $('#regPassword').val();
+    if (!nombre || !identificacion || !password) {
+        Swal.fire('Datos requeridos', 'Nombre, DUI y contraseña son obligatorios.', 'warning');
+        return;
+    }
+    $(this).prop('disabled', true);
+    $.post('<?= base_url('menu/cuenta/registrar') ?>', {
+        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        nombre, identificacion, telefono, password,
+    }).done(function (r) {
+        if (r.ok) {
+            pasarAFiadoLogueado(r.nombre);
+        } else {
+            Swal.fire('Error', r.msg, 'error');
+        }
+    }).fail(function () {
+        Swal.fire('Error', 'No se pudo crear la cuenta.', 'error');
+    }).always(function () {
+        $('#btnRegistrarCliente').prop('disabled', false);
+    });
+});
+
+// Cerrar sesión de cliente
+$('#btnLogoutCliente').on('click', function (e) {
+    e.preventDefault();
+    $.post('<?= base_url('menu/cuenta/logout') ?>', { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' })
+        .always(function () { location.reload(); });
+});
+
+// Enviar solicitud (contado o fiado)
+$('#btnEnviarPedido').on('click', function () {
     const items = Object.values(cart).map(it => ({
         item_id:  it.item_id,
         nombre:   it.nombre,
@@ -238,26 +448,55 @@ $('#btnConfirmarSolicitud').on('click', function () {
         subtotal: parseFloat((it.precio * it.cantidad).toFixed(2)),
     }));
 
+    const payload = {
+        items_json: JSON.stringify(items),
+        tipo_pago:  tipoPagoActivo,
+    };
+
+    if (tipoPagoActivo === 'contado') {
+        const nombre = clienteSesion ? clienteSesion.nombre : $('#inputNombreContado').val().trim();
+        if (!nombre) {
+            $('#inputNombreContado').addClass('is-invalid').focus();
+            return;
+        }
+        payload.cliente_nombre = nombre;
+        payload.notas = $('#inputNotasContado').val();
+
+        const exacto = $('.pago-exacto-btn.active').data('exacto') === 1;
+        if (!exacto) {
+            const monto = parseFloat($('#inputMontoRecibido').val());
+            if (!monto || monto < cartTotal()) {
+                Swal.fire('Monto inválido', 'Ingresa con cuánto vas a pagar (debe ser mayor o igual al total).', 'warning');
+                return;
+            }
+            payload.monto_recibido = monto;
+        }
+    } else {
+        payload.cliente_nombre = clienteSesion ? clienteSesion.nombre : '';
+        payload.notas = $('#inputNotasFiadoLog').val();
+    }
+
     $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin mr-1"></i>Enviando...');
 
-    $.post('<?= base_url('menu/guardar') ?>', {
-        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
-        items_json:     JSON.stringify(items),
-        cliente_nombre: nombre,
-        notas:          $('#inputNotas').val(),
-    }).done(function (r) {
+    payload['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
+
+    $.post('<?= base_url('menu/guardar') ?>', payload).done(function (r) {
         if (r.ok) {
-            $('#modalNombre').modal('hide');
+            $('#modalPedido').modal('hide');
             $('#exitoNumero').text(r.numero);
             $('#exitoTotal').text('$' + r.total);
+            $('#exitoExtra').text(tipoPagoActivo === 'fiado' ? 'Quedará como pendiente de pago (fiado).' : '');
             $('#modalExito').modal('show');
+        } else if (r.requiere_cuenta) {
+            $('#btnPagoFiado').trigger('click');
+            Swal.fire('Cuenta requerida', r.msg, 'info');
         } else {
             Swal.fire('Error', r.msg, 'error');
         }
     }).fail(function () {
         Swal.fire('Error', 'No se pudo enviar la solicitud.', 'error');
     }).always(function () {
-        $('#btnConfirmarSolicitud').prop('disabled', false)
+        $('#btnEnviarPedido').prop('disabled', false)
             .html('<i class="fa-solid fa-check mr-1"></i>Enviar Solicitud');
     });
 });
