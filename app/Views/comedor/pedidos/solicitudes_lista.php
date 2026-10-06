@@ -1,9 +1,9 @@
 <?= $this->extend('Layouts/mainbody') ?>
 <?= $this->section('content') ?>
 
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between mb-3">
-        <h4 class="mb-0">
+<div class="container-fluid px-2 px-sm-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3" style="gap:8px;">
+        <h4 class="mb-0" style="font-size:1.25rem;">
             <i class="fa-solid fa-paper-plane mr-2 text-warning"></i><?= esc($title) ?>
         </h4>
         <span class="badge badge-warning text-dark px-3 py-2" id="badgeTotal">
@@ -24,15 +24,15 @@
         <div class="col-md-6 col-lg-4 mb-3" id="card_<?= $s['id'] ?>">
             <div class="card border-warning shadow-sm h-100">
                 <div class="card-body py-3 px-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <div class="font-weight-bold"><?= esc($s['cliente_nombre']) ?></div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-start mb-2" style="gap:6px;">
+                        <div style="min-width:0;">
+                            <div class="font-weight-bold" style="word-break:break-word;"><?= esc($s['cliente_nombre']) ?></div>
                             <div class="text-muted small">
-                                <?= esc($s['numero']) ?> ·
+                                <?= esc(formatearNumeroPedido($s['numero'])) ?> ·
                                 <?= date('d/m H:i', strtotime($s['created_at'])) ?>
                             </div>
                         </div>
-                        <span class="badge badge-warning text-dark">Solicitud</span>
+                        <span class="badge badge-warning text-dark flex-shrink-0">Solicitud</span>
                     </div>
 
                     <div class="mb-2">
@@ -65,7 +65,7 @@
 
                     <div class="h5 text-primary font-weight-bold mb-3">$<?= number_format($s['total'], 2) ?></div>
 
-                    <div class="d-flex gap-2">
+                    <div class="d-flex" style="gap:6px;">
                         <a href="/comedor/pedidos/ver/<?= $s['id'] ?>" class="btn btn-sm btn-outline-secondary flex-fill">
                             <i class="fa-solid fa-eye mr-1"></i>Ver
                         </a>
@@ -78,7 +78,7 @@
                             data-cliente-id="<?= $s['cliente_id'] ?? '' ?>">
                             <i class="fa-solid fa-check mr-1"></i>Confirmar
                         </button>
-                        <button class="btn btn-sm btn-outline-danger btn-anular-sol" data-id="<?= $s['id'] ?>">
+                        <button class="btn btn-sm btn-outline-danger btn-anular-sol flex-shrink-0" data-id="<?= $s['id'] ?>">
                             <i class="fa-solid fa-ban"></i>
                         </button>
                     </div>
@@ -117,10 +117,10 @@
                         </button>
                     </div>
                 </div>
-                <div id="rowClienteFiado" style="display:none;" class="form-group mb-0">
+                <div id="rowClienteFiado" style="display:none;position:relative;" class="form-group mb-0">
                     <label class="small font-weight-bold text-muted">COMENSAL REGISTRADO (para fiado)</label>
                     <input type="text" id="inputClienteFiado" class="form-control form-control-sm" placeholder="Buscar comensal...">
-                    <div id="sugClienteFiado" class="list-group" style="position:absolute;z-index:999;width:90%;display:none;"></div>
+                    <div id="sugClienteFiado" class="list-group" style="position:absolute;z-index:999;width:100%;display:none;"></div>
                     <input type="hidden" id="clienteFiadoId">
                 </div>
             </div>
@@ -140,6 +140,14 @@
 <script>
 let solicitudActiva = null;
 
+// Formatea "P202600009" -> "Pedido 000009-2026" (mismo valor, solo presentación)
+function formatearNumeroPedido(numero) {
+    if (!numero) return '';
+    const m = /^P(\d{4})(\d+)$/.exec(numero);
+    if (!m) return numero;
+    return 'Pedido ' + m[2].padStart(6, '0') + '-' + m[1];
+}
+
 // Abrir modal confirmar
 $(document).on('click', '.btn-confirmar', function () {
     solicitudActiva = {
@@ -151,7 +159,7 @@ $(document).on('click', '.btn-confirmar', function () {
         clienteId: $(this).data('cliente-id'),
     };
     $('#confCliente').text(solicitudActiva.nombre);
-    $('#confDetalle').text('Pedido ' + solicitudActiva.numero);
+    $('#confDetalle').text(formatearNumeroPedido(solicitudActiva.numero));
     $('#confTotal').text('Total: $' + solicitudActiva.total.toFixed(2));
 
     // Precargar lo que el cliente ya eligió al pedir (el cajero puede corregirlo)

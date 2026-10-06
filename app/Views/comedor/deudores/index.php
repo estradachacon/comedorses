@@ -2,19 +2,20 @@
 <?= $this->section('content') ?>
 
 <div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between mb-4">
         <h4 class="mb-0">
             <i class="fa-solid fa-hand-holding-dollar mr-2 text-danger"></i><?= esc($title) ?>
         </h4>
+        <?php $totalDeudores = count(array_filter($comensales, fn($c) => (float) $c['saldo_pendiente'] > 0)); ?>
         <span class="badge badge-danger badge-pill px-3 py-2" style="font-size:.85rem;">
-            <?= count($deudores) ?> deudor(es)
+            <?= $totalDeudores ?> con deuda · <?= count($comensales) ?> comensal<?= count($comensales) !== 1 ? 'es' : '' ?>
         </span>
     </div>
 
-    <?php if (empty($deudores)): ?>
-        <div class="alert alert-success">
-            <i class="fa-solid fa-circle-check mr-2"></i>
-            ¡Sin deudores! Todos los comensales están al día.
+    <?php if (empty($comensales)): ?>
+        <div class="alert alert-info">
+            <i class="fa-solid fa-circle-info mr-2"></i>
+            No hay comensales registrados todavía.
         </div>
     <?php else: ?>
     <div class="card shadow-sm">
@@ -29,17 +30,25 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($deudores as $d): ?>
+                    <?php foreach ($comensales as $d): ?>
+                    <?php $tieneDeuda = (float) $d['saldo_pendiente'] > 0; ?>
                     <tr>
                         <td class="font-weight-bold"><?= esc($d['nombre']) ?></td>
                         <td class="text-muted"><?= esc($d['telefono'] ?? '—') ?></td>
                         <td class="text-right">
-                            <span class="badge badge-danger badge-pill px-2 py-1" style="font-size:.9rem;">
-                                $<?= number_format($d['saldo_pendiente'], 2) ?>
-                            </span>
+                            <?php if ($tieneDeuda): ?>
+                                <span class="badge badge-danger badge-pill px-2 py-1" style="font-size:.9rem;">
+                                    $<?= number_format($d['saldo_pendiente'], 2) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="badge badge-light text-muted px-2 py-1" style="font-size:.9rem;">
+                                    $0.00
+                                </span>
+                            <?php endif; ?>
                         </td>
                         <?php if (tienePermiso('registrar_pago_deudor_comedor')): ?>
                         <td class="text-center">
+                            <?php if ($tieneDeuda): ?>
                             <button class="btn btn-sm btn-success btn-pagar"
                                 data-id="<?= $d['id'] ?>"
                                 data-nombre="<?= esc($d['nombre'], 'attr') ?>"
@@ -50,6 +59,9 @@
                                 data-id="<?= $d['id'] ?>" data-nombre="<?= esc($d['nombre'], 'attr') ?>">
                                 <i class="fa-solid fa-list"></i>
                             </button>
+                            <?php else: ?>
+                            <span class="text-success small"><i class="fa-solid fa-circle-check mr-1"></i>Al día</span>
+                            <?php endif; ?>
                         </td>
                         <?php endif; ?>
                     </tr>

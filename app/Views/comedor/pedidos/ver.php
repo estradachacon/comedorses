@@ -72,13 +72,13 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
 <div class="container-fluid px-3 pb-4">
 
     <!-- ── ENCABEZADO ─────────────────────────────────────────────────── -->
-    <div class="d-flex align-items-center mb-3 pt-1" style="gap:10px;">
+    <div class="d-flex mb-3 pt-1" style="gap:10px;">
         <a href="/comedor/pedidos" class="btn btn-outline-secondary btn-sm" style="flex-shrink:0;">
             <i class="fa-solid fa-arrow-left"></i>
         </a>
         <div style="flex:1;min-width:0;">
-            <div class="d-flex align-items-center flex-wrap" style="gap:6px;">
-                <span class="font-weight-bold" style="font-size:1rem;"><?= esc($pedido['numero']) ?></span>
+            <div class="d-flex flex-wrap" style="gap:6px;">
+                <span class="font-weight-bold" style="font-size:1rem;"><?= esc(formatearNumeroPedido($pedido['numero'])) ?></span>
                 <span class="badge badge-<?= $badgeClass ?>" style="font-size:.78rem;">
                     <?= ucfirst($pedido['estado']) ?>
                 </span>
@@ -93,6 +93,11 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
                 <?php endif; ?>
             </div>
         </div>
+        <?php if (tienePermiso('confirmar_solicitud_comedor') && $pedido['estado'] === 'solicitud' && !$pedido['anulado']): ?>
+        <button class="btn btn-sm btn-success" id="btnConfirmarPedido" style="flex-shrink:0;">
+            <i class="fa-solid fa-check mr-1"></i><span class="d-none d-sm-inline">Confirmar</span>
+        </button>
+        <?php endif; ?>
         <?php if (tienePermiso('anular_pedido_comedor') && !$pedido['anulado']): ?>
         <button class="btn btn-sm btn-outline-danger" id="btnAnularPedido" style="flex-shrink:0;">
             <i class="fa-solid fa-ban mr-1"></i><span class="d-none d-sm-inline">Anular</span>
@@ -127,7 +132,12 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
                     <?php foreach ($detalles as $d): ?>
                     <div class="item-row">
                         <div style="flex:1;min-width:0;">
-                            <div class="item-name"><?= esc($d['item_nombre']) ?></div>
+                            <div class="item-name">
+                                <?= esc($d['item_nombre']) ?>
+                                <?php if (!empty($d['servicio'])): ?>
+                                <span class="badge badge-light text-muted" style="font-size:.68rem;font-weight:600;"><?= etiquetaServicioComedor($d['servicio']) ?></span>
+                                <?php endif; ?>
+                            </div>
                             <div class="item-qty"><?= (int)$d['cantidad'] ?> × $<?= number_format($d['precio_unitario'], 2) ?></div>
                         </div>
                         <div class="item-sub">$<?= number_format($d['subtotal'], 2) ?></div>
@@ -207,10 +217,114 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
     </div>
 </div>
 
+<?php if (tienePermiso('confirmar_solicitud_comedor') && $pedido['estado'] === 'solicitud' && !$pedido['anulado']): ?>
+<!-- Modal: confirmar solicitud -->
+<div class="modal fade" id="modalConfirmarVer" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-check-circle text-success mr-2"></i>Confirmar Solicitud
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mb-2">
+                    <label class="font-weight-bold">Tipo de pago</label>
+                    <div class="btn-group btn-group-sm w-100" role="group">
+                        <button type="button" class="btn btn-outline-success tipo-conf-ver-btn<?= $pedido['tipo_pago'] === 'contado' ? ' active' : '' ?>" data-tipo="contado">
+                            <i class="fa-solid fa-money-bill-wave mr-1"></i>Contado
+                        </button>
+                        <button type="button" class="btn btn-outline-warning tipo-conf-ver-btn<?= $pedido['tipo_pago'] === 'fiado' ? ' active' : '' ?>" data-tipo="fiado">
+                            <i class="fa-solid fa-clock mr-1"></i>Fiado
+                        </button>
+                    </div>
+                </div>
+                <div id="confVerClienteRow" style="<?= $pedido['tipo_pago'] === 'fiado' ? '' : 'display:none;' ?>" class="form-group mb-0">
+                    <label class="small font-weight-bold text-muted">COMENSAL REGISTRADO (para fiado)</label>
+                    <input type="text" id="confVerClienteInput" class="form-control form-control-sm" placeholder="Buscar comensal..." value="<?= $pedido['cliente_id'] ? esc($pedido['cliente_nombre'], 'attr') : '' ?>">
+                    <div id="confVerClienteSug" class="list-group" style="position:absolute;z-index:999;width:90%;display:none;"></div>
+                    <input type="hidden" id="confVerClienteId" value="<?= $pedido['cliente_id'] ?? '' ?>">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnConfirmarVerOk">
+                    <i class="fa-solid fa-check mr-1"></i>Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script>
+<?php if (tienePermiso('confirmar_solicitud_comedor') && $pedido['estado'] === 'solicitud' && !$pedido['anulado']): ?>
+$('#btnConfirmarPedido').on('click', function () {
+    $('#modalConfirmarVer').modal('show');
+});
+
+$('.tipo-conf-ver-btn').on('click', function () {
+    $('.tipo-conf-ver-btn').removeClass('active');
+    $(this).addClass('active');
+    const esFiado = $(this).data('tipo') === 'fiado';
+    $('#confVerClienteRow').toggle(esFiado);
+    if (!esFiado) { $('#confVerClienteInput,#confVerClienteId').val(''); }
+});
+
+let searchTimerVer;
+$('#confVerClienteInput').on('input', function () {
+    $('#confVerClienteId').val('');
+    clearTimeout(searchTimerVer);
+    const q = $(this).val().trim();
+    if (q.length < 2) { $('#confVerClienteSug').hide(); return; }
+    searchTimerVer = setTimeout(() => {
+        $.get('/comedor/clientes/buscar', { q }).done(data => {
+            if (!data.length) { $('#confVerClienteSug').hide(); return; }
+            $('#confVerClienteSug').html(
+                data.map(c => `<a href="#" class="list-group-item list-group-item-action py-1 px-2 conf-ver-cli-sug"
+                    data-id="${c.id}" data-nombre="${c.nombre}" style="font-size:.85rem;">${c.nombre}</a>`).join('')
+            ).show();
+        });
+    }, 250);
+});
+
+$(document).on('click', '.conf-ver-cli-sug', function (e) {
+    e.preventDefault();
+    $('#confVerClienteInput').val($(this).data('nombre'));
+    $('#confVerClienteId').val($(this).data('id'));
+    $('#confVerClienteSug').hide();
+});
+
+$(document).on('click', function (e) {
+    if (!$(e.target).closest('#confVerClienteInput,#confVerClienteSug').length) $('#confVerClienteSug').hide();
+});
+
+$('#btnConfirmarVerOk').on('click', function () {
+    const tipoPago  = $('.tipo-conf-ver-btn.active').data('tipo');
+    const clienteId = $('#confVerClienteId').val();
+    if (tipoPago === 'fiado' && !clienteId) {
+        Swal.fire('Comensal requerido', 'Selecciona un comensal registrado para fiado.', 'warning');
+        return;
+    }
+    $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+    $.post('/comedor/pedidos/confirmar/<?= $pedido['id'] ?>', {
+        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        tipo_pago: tipoPago, cliente_id: clienteId,
+    }).done(res => {
+        if (res.ok) {
+            location.reload();
+        } else {
+            Swal.fire('Error', res.msg, 'error');
+            $('#btnConfirmarVerOk').prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar');
+        }
+    });
+});
+<?php endif; ?>
+
 $('#btnAnularPedido').on('click', function () {
     Swal.fire({
         title: '¿Anular este pedido?',

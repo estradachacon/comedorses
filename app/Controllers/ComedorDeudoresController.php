@@ -24,8 +24,8 @@ class ComedorDeudoresController extends BaseController
         if (!tienePermiso('ver_deudores_comedor')) {
             return redirect()->back()->with('permiso_error', 'Sin permiso.');
         }
-        $data['deudores'] = $this->clienteModel->deudores();
-        $data['title']    = 'Deudores del Comedor';
+        $data['comensales'] = $this->clienteModel->todos();
+        $data['title']       = 'Deudores del Comedor';
         return view('comedor/deudores/index', $data);
     }
 

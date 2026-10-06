@@ -29,6 +29,15 @@ class ComedorPublicoController extends Controller
     {
         $items = $this->menuModel->itemsDelDia(date('Y-m-d'));
 
+        // Info de horarios de servicio (desayuno/refrigerio/almuerzo) para cada item
+        foreach ($items as &$item) {
+            $item['servicios_asignados'] = serviciosAsignadosComedor($item);
+            $item['servicios_abiertos']  = serviciosAbiertosComedor($item);
+            $item['disponible_ahora']    = itemDisponibleAhoraComedor($item);
+            $item['requiere_horario']    = requiereElegirHorarioComedor($item);
+        }
+        unset($item);
+
         // Agrupar por categoría
         $porCategoria = [];
         foreach ($items as $item) {
@@ -81,13 +90,41 @@ class ComedorPublicoController extends Controller
             return $this->response->setJSON(['ok' => false, 'msg' => 'El monto con el que pagas no puede ser menor al total.']);
         }
 
-        // Validar que los items pertenecen al menú de hoy (seguridad)
+        // Validar que los items pertenecen al menú de hoy y que su horario de servicio sigue vigente (seguridad)
         $menuHoy = array_column($this->menuModel->itemsDelDia(date('Y-m-d')), null, 'item_id');
-        foreach ($items as $item) {
-            if (!isset($menuHoy[$item['item_id']])) {
+        foreach ($items as &$item) {
+            $menuItem = $menuHoy[$item['item_id']] ?? null;
+            if (!$menuItem) {
                 return $this->response->setJSON(['ok' => false, 'msg' => 'Item no disponible hoy.']);
             }
+
+            if (!itemDisponibleAhoraComedor($menuItem)) {
+                return $this->response->setJSON(['ok' => false, 'msg' => $menuItem['nombre'] . ' ya no está disponible a esta hora.']);
+            }
+
+            $asignados = serviciosAsignadosComedor($menuItem);
+            $abiertos  = serviciosAbiertosComedor($menuItem);
+
+            if (requiereElegirHorarioComedor($menuItem)) {
+                $servicio = $item['servicio'] ?? null;
+                if ($servicio && !in_array($servicio, $abiertos, true)) {
+                    return $this->response->setJSON(['ok' => false, 'msg' => 'Ese horario ya no está disponible para ' . $menuItem['nombre'] . '.']);
+                }
+                if (!$servicio) {
+                    if (count($abiertos) === 1) {
+                        $servicio = $abiertos[0];
+                    } else {
+                        return $this->response->setJSON(['ok' => false, 'msg' => 'Indica para qué horario deseas ' . $menuItem['nombre'] . '.']);
+                    }
+                }
+                $item['servicio_resuelto'] = $servicio;
+            } elseif (count($asignados) === 1) {
+                $item['servicio_resuelto'] = $asignados[0];
+            } else {
+                $item['servicio_resuelto'] = null;
+            }
         }
+        unset($item);
 
         $total  = array_sum(array_column($items, 'subtotal'));
         $numero = $this->headModel->generarNumero();
@@ -116,6 +153,7 @@ class ComedorPublicoController extends Controller
                     'pedido_id'       => $pedidoId,
                     'item_id'         => $item['item_id'],
                     'item_nombre'     => $item['nombre'],
+                    'servicio'        => $item['servicio_resuelto'] ?? null,
                     'precio_unitario' => $item['precio'],
                     'cantidad'        => $item['cantidad'],
                     'subtotal'        => $item['subtotal'],
@@ -125,7 +163,7 @@ class ComedorPublicoController extends Controller
             $db->transCommit();
             return $this->response->setJSON([
                 'ok'     => true,
-                'numero' => $numero,
+                'numero' => formatearNumeroPedido($numero),
                 'total'  => number_format($total, 2),
             ]);
         } catch (\Exception $e) {

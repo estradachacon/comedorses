@@ -58,6 +58,7 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {    // Grupo del Da
     $routes->post('comedor/items/crear',         'ComedorItemsController::crear');
     $routes->get('comedor/items/editar/(:num)',  'ComedorItemsController::editar/$1');
     $routes->post('comedor/items/actualizar/(:num)', 'ComedorItemsController::actualizar/$1');
+    $routes->post('comedor/items/actualizar-rapido/(:num)', 'ComedorItemsController::actualizarRapido/$1');
     $routes->post('comedor/items/toggle/(:num)', 'ComedorItemsController::toggleDisponible/$1');
     // Categorías
     $routes->get('comedor/categorias',           'ComedorItemsController::categorias');
@@ -74,6 +75,10 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {    // Grupo del Da
     $routes->get('comedor/deudores',             'ComedorDeudoresController::index');
     $routes->get('comedor/deudores/pendientes/(:num)', 'ComedorDeudoresController::pendientesCliente/$1');
     $routes->post('comedor/deudores/pagar',      'ComedorDeudoresController::registrarPago');
+
+    $routes->get('comedor/entregas',             'ComedorEntregasController::index');
+    $routes->get('comedor/entregas/llamar',      'ComedorEntregasController::llamar');
+    $routes->post('comedor/entregas/marcar/(:num)', 'ComedorEntregasController::marcarEntregado/$1');
 
     // Módulo de Pedidos (legacy)
     $routes->group('orders', function ($routes) {

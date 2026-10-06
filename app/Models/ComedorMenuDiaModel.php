@@ -35,13 +35,31 @@ class ComedorMenuDiaModel extends Model
     public function agregarItem(int $itemId, string $fecha): void
     {
         if (!$this->estaEnMenu($itemId, $fecha)) {
-            $this->insert(['fecha' => $fecha, 'item_id' => $itemId]);
+            // Nace "todo el día" (los 3 horarios activos): un item en el menú de hoy
+            // nunca debe quedar sin ningún horario asignado.
+            $this->insert([
+                'fecha'      => $fecha,
+                'item_id'    => $itemId,
+                'desayuno'   => 1,
+                'refrigerio' => 1,
+                'almuerzo'   => 1,
+            ]);
         }
     }
 
     public function quitarItem(int $itemId, string $fecha): void
     {
         $this->where('fecha', $fecha)->where('item_id', $itemId)->delete();
+    }
+
+    // Suma de los 3 horarios de un item en una fecha; 0 significa que no tiene ningún horario.
+    public function totalHorarios(int $itemId, string $fecha): int
+    {
+        $row = $this->where('fecha', $fecha)->where('item_id', $itemId)->first();
+        if (!$row) {
+            return 0;
+        }
+        return (int) $row['desayuno'] + (int) $row['refrigerio'] + (int) $row['almuerzo'];
     }
 
     public function limpiarDia(string $fecha): void
@@ -84,12 +102,14 @@ class ComedorMenuDiaModel extends Model
         $count = 0;
         foreach ($items as $item) {
             if (!$this->estaEnMenu($item['item_id'], $fechaDestino)) {
+                $sinHorario = !$item['desayuno'] && !$item['refrigerio'] && !$item['almuerzo'];
                 $this->insert([
                     'fecha'      => $fechaDestino,
                     'item_id'    => $item['item_id'],
-                    'desayuno'   => $item['desayuno'],
-                    'refrigerio' => $item['refrigerio'],
-                    'almuerzo'   => $item['almuerzo'],
+                    // Normaliza datos viejos sin horario (antes de exigir al menos uno) a "todo el día".
+                    'desayuno'   => $sinHorario ? 1 : $item['desayuno'],
+                    'refrigerio' => $sinHorario ? 1 : $item['refrigerio'],
+                    'almuerzo'   => $sinHorario ? 1 : $item['almuerzo'],
                 ]);
                 $count++;
             }

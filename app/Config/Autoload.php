@@ -88,5 +88,5 @@ class Autoload extends AutoloadConfig
      *
      * @var list<string>
      */
-    public $helpers = ['url', 'form', 'bitacora', 'package', 'transaction', 'account', 'auth', 'cashier', 'settings', 'dte', 'notification', 'cont_ventas'];
+    public $helpers = ['url', 'form', 'bitacora', 'package', 'transaction', 'account', 'auth', 'cashier', 'settings', 'dte', 'notification', 'cont_ventas', 'comedor'];
 }

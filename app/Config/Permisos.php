@@ -19,6 +19,7 @@ class Permisos extends BaseConfig
             'gestionar_clientes_comedor',
             'ver_deudores_comedor',
             'registrar_pago_deudor_comedor',
+            'gestionar_entregas_comedor',
         ],
 
         'Notificaciones' => [

@@ -1,6 +1,25 @@
 <?= $this->extend('Layouts/mainbody') ?>
 <?= $this->section('content') ?>
 
+<style>
+.item-thumb {
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+    border: 1px solid #e3e6ea;
+}
+#previewFotoItem {
+    width: 100%;
+    max-height: 160px;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1px solid #e3e6ea;
+    background: #f8f9fa;
+}
+</style>
+
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between  mb-3">
         <h4 class="mb-0">
@@ -80,10 +99,17 @@
             <div class="col-md-4 col-lg-3 mb-3">
                 <div class="card h-100 shadow-sm item-toggle-card <?= $activo ? 'border-success' : '' ?>"
                      data-id="<?= $item['id'] ?>" data-activo="<?= $activo ? 1 : 0 ?>"
+                     data-nombre="<?= esc($item['nombre'], 'attr') ?>"
+                     data-descripcion="<?= esc($item['descripcion'] ?? '', 'attr') ?>"
+                     data-precio="<?= $item['precio'] ?>"
+                     data-categoria-id="<?= $item['categoria_id'] ?? '' ?>"
+                     data-foto-url="<?= !empty($item['foto']) ? esc(base_url('upload/comedor_items/' . $item['foto']), 'attr') : '' ?>"
                      style="cursor:pointer; transition: border .15s;">
                     <div class="card-body py-2 px-3">
                         <div class="d-flex align-items-center">
-                            <div class="mr-3">
+                            <img src="<?= !empty($item['foto']) ? esc(base_url('upload/comedor_items/' . $item['foto'])) : base_url('upload/no-image.png') ?>"
+                                 class="item-thumb mr-2" alt="">
+                            <div class="mr-2">
                                 <div class="custom-control custom-switch mb-0">
                                     <input type="checkbox" class="custom-control-input switch-item"
                                            id="sw_<?= $item['id'] ?>"
@@ -92,11 +118,14 @@
                                 </div>
                             </div>
                             <div class="flex-grow-1 min-width-0">
-                                <div class="font-weight-bold" style="font-size:.88rem;"><?= esc($item['nombre']) ?></div>
+                                <div class="font-weight-bold item-nombre-txt" style="font-size:.88rem;"><?= esc($item['nombre']) ?></div>
                             </div>
-                            <div class="text-success font-weight-bold ml-2" style="font-size:.9rem; flex-shrink:0;">
+                            <div class="text-success font-weight-bold ml-2 item-precio-txt" style="font-size:.9rem; flex-shrink:0;">
                                 $<?= number_format($item['precio'], 2) ?>
                             </div>
+                            <button type="button" class="btn btn-sm btn-link text-muted btn-editar-item p-0 ml-2" title="Editar">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
                         </div>
                         <div class="srv-btns" id="srv_<?= $item['id'] ?>"
                              style="<?= $activo ? '' : 'display:none;' ?> padding-left:42px; margin-top:5px;">
@@ -151,6 +180,62 @@
     </div>
 </div>
 
+<!-- Modal: edición rápida de item -->
+<div class="modal fade" id="modalEditarItem" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title font-weight-bold mb-0">
+                    <i class="fa-solid fa-pen mr-2 text-primary"></i>Editar Item
+                </h6>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <img id="previewFotoItem" src="<?= base_url('upload/no-image.png') ?>" alt="">
+                    <div class="mt-2">
+                        <label class="btn btn-sm btn-outline-secondary mb-0">
+                            <i class="fa-solid fa-camera mr-1"></i>Cambiar foto
+                            <input type="file" id="inputFotoItem" accept="image/png,image/jpeg,image/webp" style="display:none;">
+                        </label>
+                        <div class="text-muted" style="font-size:.72rem;">JPG, PNG o WEBP · máx. 3MB (opcional)</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="small font-weight-bold text-muted">NOMBRE</label>
+                    <input type="text" id="editNombre" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="small font-weight-bold text-muted">CATEGORÍA</label>
+                    <select id="editCategoriaId" class="form-control">
+                        <option value="">Sin categoría</option>
+                        <?php foreach ($categorias as $cat): ?>
+                        <option value="<?= $cat['id'] ?>"><?= esc($cat['nombre']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="small font-weight-bold text-muted">PRECIO</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend"><span class="input-group-text">$</span></div>
+                        <input type="number" id="editPrecio" class="form-control" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-group mb-0">
+                    <label class="small font-weight-bold text-muted">DESCRIPCIÓN</label>
+                    <textarea id="editDescripcion" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnGuardarEdicionItem">
+                    <i class="fa-solid fa-check mr-1"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 const fecha = '<?= $fecha ?>';
 const csrfName = '<?= csrf_token() ?>';
@@ -189,10 +274,76 @@ $(document).on('change', '.switch-item', function () {
         .fail(function () { chk.checked = !chk.checked; });
 });
 
-// Click en la card también activa el switch (excluir botones D/R/A)
+// Click en la card también activa el switch (excluir botones D/R/A y editar)
 $('.item-toggle-card').on('click', function (e) {
-    if ($(e.target).is('input, label, .btn-srv')) return;
+    if ($(e.target).closest('.btn-srv, .btn-editar-item').length) return;
+    if ($(e.target).is('input, label')) return;
     $(this).find('.switch-item').trigger('click');
+});
+
+// ── Edición rápida de item ──────────────────────────────────────────────
+let itemEditandoId = null;
+
+$(document).on('click', '.btn-editar-item', function (e) {
+    e.stopPropagation();
+    const card = $(this).closest('.item-toggle-card');
+    itemEditandoId = card.data('id');
+
+    $('#editNombre').val(card.data('nombre'));
+    $('#editDescripcion').val(card.data('descripcion'));
+    $('#editPrecio').val(card.data('precio'));
+    $('#editCategoriaId').val(card.data('categoria-id') || '');
+    $('#previewFotoItem').attr('src', card.data('foto-url') || '<?= base_url('upload/no-image.png') ?>');
+    $('#inputFotoItem').val('');
+
+    $('#modalEditarItem').modal('show');
+});
+
+// Preview de la foto elegida
+$('#inputFotoItem').on('change', function () {
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => $('#previewFotoItem').attr('src', e.target.result);
+    reader.readAsDataURL(file);
+});
+
+$('#btnGuardarEdicionItem').on('click', function () {
+    const nombre = $('#editNombre').val().trim();
+    const precio = $('#editPrecio').val();
+    if (!nombre || precio === '' || parseFloat(precio) < 0) {
+        Swal.fire('Datos inválidos', 'Nombre y precio son requeridos.', 'warning');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append(csrfName, csrfHash);
+    formData.append('nombre', nombre);
+    formData.append('categoria_id', $('#editCategoriaId').val());
+    formData.append('precio', precio);
+    formData.append('descripcion', $('#editDescripcion').val());
+    const foto = $('#inputFotoItem')[0].files[0];
+    if (foto) formData.append('foto', foto);
+
+    $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin mr-1"></i>Guardando...');
+
+    $.ajax({
+        url: '/comedor/items/actualizar-rapido/' + itemEditandoId,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+    }).done(function (r) {
+        if (!r.ok) { Swal.fire('Error', r.msg, 'error'); return; }
+        $('#modalEditarItem').modal('hide');
+        // Recarga para reflejar bien el item si cambió de categoría (reagrupa las secciones).
+        Swal.fire({ icon: 'success', title: 'Item actualizado', timer: 900, showConfirmButton: false })
+            .then(() => location.reload());
+    }).fail(function () {
+        Swal.fire('Error', 'No se pudo guardar el item.', 'error');
+    }).always(() => {
+        $('#btnGuardarEdicionItem').prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Guardar');
+    });
 });
 
 // Toggle D / R / A
@@ -208,6 +359,24 @@ $(document).on('click', '.btn-srv', function (e) {
     $.post('/comedor/menu/servicio', { [csrfName]: csrfHash, item_id: itemId, fecha, servicio, valor: nuevoVal })
         .done(function (r) {
             if (!r.ok) return;
+
+            if (r.quitado) {
+                // Se apagaron los 3 horarios: un item en el menú no puede quedar sin ninguno,
+                // así que se quitó del menú de hoy automáticamente.
+                const card = btn.closest('.item-toggle-card');
+                card.removeClass('border-success');
+                card.find('.switch-item').prop('checked', false);
+                card.find('.srv-btns').hide();
+                card.find('.btn-srv')
+                    .removeClass('btn-warning btn-info btn-success')
+                    .addClass('btn-outline-secondary')
+                    .data('val', 0);
+                enMenu = enMenu.filter(x => x !== itemId);
+                actualizarContador();
+                Swal.fire({ icon: 'info', title: 'Item quitado del menú', text: 'Debe tener al menos un horario activo.', timer: 1800, showConfirmButton: false });
+                return;
+            }
+
             btn.data('val', nuevoVal);
             if (nuevoVal) {
                 btn.removeClass('btn-outline-secondary').addClass(srvColors[servicio]);

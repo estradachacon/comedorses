@@ -19,6 +19,14 @@ class ComedorClienteModel extends Model
             ->findAll();
     }
 
+    public function todos(): array
+    {
+        return $this->where('activo', 1)
+            ->orderBy('saldo_pendiente', 'DESC')
+            ->orderBy('nombre', 'ASC')
+            ->findAll();
+    }
+
     public function buscarPorIdentificacion(string $identificacion): ?array
     {
         return $this->where('identificacion', trim($identificacion))->first();

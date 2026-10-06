@@ -12,6 +12,7 @@ class ComedorPedidoHeadModel extends Model
         'numero', 'cliente_id', 'cliente_nombre', 'fecha',
         'total', 'monto_pagado', 'saldo', 'tipo_pago', 'monto_recibido', 'estado', 'notas',
         'anulado', 'anulado_por', 'fecha_anulacion', 'created_by',
+        'entregado_at', 'entregado_por',
     ];
     protected $useTimestamps = true;
 

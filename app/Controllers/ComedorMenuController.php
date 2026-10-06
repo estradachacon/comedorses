@@ -4,16 +4,19 @@ namespace App\Controllers;
 
 use App\Models\ComedorMenuDiaModel;
 use App\Models\ComedorItemModel;
+use App\Models\ComedorCategoriaModel;
 
 class ComedorMenuController extends BaseController
 {
-    protected ComedorMenuDiaModel $menuModel;
-    protected ComedorItemModel    $itemModel;
+    protected ComedorMenuDiaModel    $menuModel;
+    protected ComedorItemModel       $itemModel;
+    protected ComedorCategoriaModel  $catModel;
 
     public function __construct()
     {
         $this->menuModel = new ComedorMenuDiaModel();
         $this->itemModel = new ComedorItemModel();
+        $this->catModel  = new ComedorCategoriaModel();
     }
 
     public function index()
@@ -40,6 +43,7 @@ class ComedorMenuController extends BaseController
         );
 
         $data['todos']      = $todosItems;
+        $data['categorias'] = $this->catModel->where('activa', 1)->orderBy('nombre')->findAll();
         $data['enMenu']     = $enMenu;
         $data['servicios']  = $this->menuModel->getServiciosDia($fecha);
         $data['fecha']      = $fecha;
@@ -101,7 +105,15 @@ class ComedorMenuController extends BaseController
         }
 
         $this->menuModel->setServicio($itemId, $fecha, $servicio, $valor);
-        return $this->response->setJSON(['ok' => true]);
+
+        // Un item en el menú de hoy no puede quedar sin ningún horario: si las 3 banderas
+        // quedaron en 0, se interpreta como "apagado" y se quita del menú de hoy.
+        if ($this->menuModel->totalHorarios($itemId, $fecha) === 0) {
+            $this->menuModel->quitarItem($itemId, $fecha);
+            return $this->response->setJSON(['ok' => true, 'quitado' => true]);
+        }
+
+        return $this->response->setJSON(['ok' => true, 'quitado' => false]);
     }
 
     public function whatsapp()

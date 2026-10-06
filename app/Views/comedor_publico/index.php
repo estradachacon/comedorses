@@ -9,6 +9,95 @@
 <?= $this->endSection() ?>
 <?php return; endif; ?>
 
+<style>
+.item-svc { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.svc-badge {
+    font-size: .65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: #eef6fb;
+    color: #1c5a96;
+}
+.svc-badge-allday { background: #eef2f5; color: #495057; }
+.svc-badge-closed { background: #fbeaea; color: #a33a3a; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.item-card.item-disabled { opacity: .55; }
+.item-card.item-disabled .item-name { text-decoration: line-through; }
+
+.qty-slot { position: relative; width: 94px; height: 32px; }
+.qty-slot .add-btn {
+    position: absolute;
+    top: 0; right: 0;
+    width: 32px; height: 32px;
+    transition: opacity .18s ease, transform .18s ease;
+}
+.qty-slot .add-btn.hide {
+    opacity: 0;
+    transform: scale(.4);
+    pointer-events: none;
+}
+.qty-slot .qty-control {
+    position: absolute;
+    top: 0; right: 0;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    height: 32px;
+    opacity: 0;
+    transform: scale(.4);
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+}
+.qty-slot .qty-control.show {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: auto;
+}
+
+.cart-bar-left { cursor: pointer; }
+.cart-drawer {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 64px;
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.15);
+    max-height: 48vh;
+    overflow-y: auto;
+    transform: translateY(110%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    z-index: 190;
+    padding: 10px 16px 14px;
+}
+.cart-drawer.open { transform: translateY(0); }
+.cart-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 4px;
+}
+.cart-drawer-close { background: none; border: none; font-size: 1.5rem; line-height: 1; color: #aaa; padding: 0; }
+.cart-drawer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid #f3f3f3;
+    gap: 10px;
+}
+.cart-drawer-row:last-child { border-bottom: none; }
+.cart-drawer-name { font-size: .85rem; font-weight: 600; flex: 1; min-width: 0; }
+.cart-drawer-tag { font-size: .72rem; color: #888; font-weight: 400; }
+.cart-drawer-qty { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.cart-drawer-price { font-size: .85rem; font-weight: 700; color: #20c997; width: 58px; text-align: right; flex-shrink: 0; }
+</style>
+
 <?php if ($clienteSesion): ?>
 <div class="d-flex justify-content-between align-items-center px-3 py-2" style="background:#fff;border-bottom:1px solid #e9ecef;font-size:.8rem;">
     <span><i class="fa-solid fa-circle-user mr-1 text-primary"></i>Hola, <strong><?= esc($clienteSesion['nombre']) ?></strong></span>
@@ -31,9 +120,17 @@
         <div class="cat-heading"><?= esc($categoria) ?></div>
 
         <?php foreach ($items as $item): ?>
-        <div class="item-card" data-id="<?= $item['item_id'] ?>"
+        <?php
+            $asignados       = $item['servicios_asignados'];
+            $abiertos        = $item['servicios_abiertos'];
+            $disponibleAhora = $item['disponible_ahora'];
+            $horarios        = horariosServicioComedor();
+        ?>
+        <div class="item-card<?= $disponibleAhora ? '' : ' item-disabled' ?>" data-id="<?= $item['item_id'] ?>"
              data-nombre="<?= esc($item['nombre'], 'attr') ?>"
-             data-precio="<?= $item['precio'] ?>">
+             data-precio="<?= $item['precio'] ?>"
+             data-requiere-horario="<?= $item['requiere_horario'] ? 1 : 0 ?>"
+             data-servicios-abiertos="<?= esc(implode(',', $abiertos), 'attr') ?>">
 
             <div class="item-emoji">🍽️</div>
 
@@ -42,19 +139,39 @@
                 <?php if (!empty($item['descripcion'])): ?>
                     <div class="item-desc"><?= esc($item['descripcion']) ?></div>
                 <?php endif; ?>
-                <div class="qty-control" style="display:none;" id="qtyCtrl_<?= $item['item_id'] ?>">
-                    <button class="qty-btn btn-menos" data-id="<?= $item['item_id'] ?>">−</button>
-                    <span class="qty-num" id="qty_<?= $item['item_id'] ?>">1</span>
-                    <button class="qty-btn btn-mas" data-id="<?= $item['item_id'] ?>">+</button>
+
+                <?php if (count($asignados) === 3): ?>
+                <div class="item-svc"><span class="svc-badge svc-badge-allday">Disponible todo el día</span></div>
+                <?php elseif (!empty($asignados)): ?>
+                <div class="item-svc">
+                    <?php if ($disponibleAhora): ?>
+                        <?php foreach ($abiertos as $s): ?>
+                        <span class="svc-badge"><?= etiquetaServicioComedor($s) ?> · hasta <?= formatearHoraComedor($horarios[$s]) ?></span>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <span class="svc-badge svc-badge-closed">
+                            Ya no disponible hoy (era <?= implode(' / ', array_map(fn ($s) => etiquetaServicioComedor($s) . ' hasta ' . formatearHoraComedor($horarios[$s]), $asignados)) ?>)
+                        </span>
+                    <?php endif; ?>
                 </div>
+                <?php endif; ?>
+
             </div>
 
             <div class="d-flex flex-column align-items-end">
                 <div class="item-price mb-1">$<?= number_format($item['precio'], 2) ?></div>
-                <button class="qty-btn add-btn btn-agregar" data-id="<?= $item['item_id'] ?>"
-                        style="width:32px;height:32px;">
-                    <i class="fa-solid fa-plus" style="font-size:.8rem;"></i>
-                </button>
+                <?php if ($disponibleAhora): ?>
+                <div class="qty-slot">
+                    <button class="qty-btn add-btn btn-agregar" data-id="<?= $item['item_id'] ?>">
+                        <i class="fa-solid fa-plus" style="font-size:.8rem;"></i>
+                    </button>
+                    <div class="qty-control" id="qtyCtrl_<?= $item['item_id'] ?>">
+                        <button class="qty-btn btn-menos" data-id="<?= $item['item_id'] ?>">−</button>
+                        <span class="qty-num" id="qty_<?= $item['item_id'] ?>">1</span>
+                        <button class="qty-btn btn-mas" data-id="<?= $item['item_id'] ?>">+</button>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
         <?php endforeach; ?>
@@ -62,9 +179,18 @@
     <?php endforeach; ?>
 </div>
 
+<!-- Carrito flotante expandible (ver qué se va a pedir) -->
+<div class="cart-drawer" id="cartDrawer">
+    <div class="cart-drawer-header">
+        <span><i class="fa-solid fa-basket-shopping mr-1"></i>Tu pedido</span>
+        <button type="button" class="cart-drawer-close" id="btnCerrarCarrito">&times;</button>
+    </div>
+    <div id="cartDrawerItems"></div>
+</div>
+
 <!-- Barra flotante del carrito -->
 <div class="cart-bar" id="cartBar">
-    <div class="cart-bar-left">
+    <div class="cart-bar-left" id="cartBarLeft">
         <div class="cart-bar-count" id="cartCount">0 items</div>
         <div class="cart-bar-total" id="cartTotal">$0.00</div>
     </div>
@@ -204,6 +330,7 @@ function renderCartBar() {
 
     if (count === 0) {
         $('#cartBar').removeClass('visible');
+        $('#cartDrawer').removeClass('open');
     } else {
         $('#cartBar').addClass('visible');
         $('#cartCount').text(count + (count === 1 ? ' item' : ' items'));
@@ -211,55 +338,148 @@ function renderCartBar() {
     }
 }
 
-// Agregar item
-$(document).on('click', '.btn-agregar', function (e) {
-    e.stopPropagation();
-    const card = $(this).closest('.item-card');
-    const id   = card.data('id');
+function renderCartDrawer() {
+    const keys = Object.keys(cart);
+    if (!keys.length) {
+        $('#cartDrawerItems').html('<p class="text-muted text-center py-3 mb-0" style="font-size:.85rem;">Tu carrito está vacío.</p>');
+        return;
+    }
+    let html = '';
+    keys.forEach(id => {
+        const it = cart[id];
+        const tag = it.servicio ? `<span class="cart-drawer-tag">(${etiquetaHorario(it.servicio)})</span>` : '';
+        html += `
+        <div class="cart-drawer-row">
+            <div class="cart-drawer-name">${it.nombre} ${tag}</div>
+            <div class="cart-drawer-qty">
+                <button type="button" class="qty-btn drawer-menos" data-id="${id}" style="width:26px;height:26px;">−</button>
+                <span style="min-width:18px;text-align:center;font-weight:700;font-size:.85rem;">${it.cantidad}</span>
+                <button type="button" class="qty-btn drawer-mas" data-id="${id}" style="width:26px;height:26px;">+</button>
+            </div>
+            <div class="cart-drawer-price">${formatMoney(it.precio * it.cantidad)}</div>
+        </div>`;
+    });
+    $('#cartDrawerItems').html(html);
+}
+
+// Mantiene sincronizados: la barra inferior, el carrito flotante y el número visible en cada card del menú.
+function syncUI() {
+    renderCartBar();
+    renderCartDrawer();
+    Object.keys(cart).forEach(id => $('#qty_' + id).text(cart[id].cantidad));
+}
+
+function etiquetaHorario(s) {
+    const map = { desayuno: 'Desayuno', refrigerio: 'Refrigerio', almuerzo: 'Almuerzo' };
+    return map[s] || s;
+}
+
+function quitarDelCarrito(id) {
+    delete cart[id];
+    const card = $('[data-id="' + id + '"].item-card');
+    card.removeClass('selected');
+    $('#qtyCtrl_' + id).removeClass('show');
+    card.find('.btn-agregar').removeClass('hide');
+}
+
+function agregarAlCarrito(card, btnEl, servicio) {
+    const id = card.data('id');
     if (!cart[id]) {
         cart[id] = {
             item_id:  id,
             nombre:   card.data('nombre'),
             precio:   parseFloat(card.data('precio')),
             cantidad: 1,
+            servicio: servicio || null,
         };
         card.addClass('selected');
-        $('#qtyCtrl_' + id).show();
-        $(this).hide();
+        $('#qtyCtrl_' + id).addClass('show');
+        $(btnEl).addClass('hide');
     } else {
         cart[id].cantidad++;
-        $('#qty_' + id).text(cart[id].cantidad);
     }
-    renderCartBar();
+    syncUI();
+}
+
+// Agregar item
+$(document).on('click', '.btn-agregar', function (e) {
+    e.stopPropagation();
+    const btn  = this;
+    const card = $(this).closest('.item-card');
+    const requiereHorario = card.data('requiere-horario') == 1;
+    const abiertos = String(card.data('servicios-abiertos') || '').split(',').filter(Boolean);
+
+    // Item disponible en más de un horario a la vez: preguntar para cuál lo quiere
+    if (requiereHorario && abiertos.length > 1) {
+        const opciones = {};
+        abiertos.forEach(s => { opciones[s] = etiquetaHorario(s); });
+        Swal.fire({
+            title: '¿Para qué horario lo deseas?',
+            input: 'radio',
+            inputOptions: opciones,
+            inputValidator: (value) => (value ? undefined : 'Elige un horario'),
+            confirmButtonText: 'Agregar',
+            showCancelButton: true,
+            cancelButtonText: 'Cancelar',
+        }).then(result => {
+            if (result.isConfirmed && result.value) {
+                agregarAlCarrito(card, btn, result.value);
+            }
+        });
+        return;
+    }
+
+    // Un solo horario posible entre los dos originales (el otro ya cerró): se asigna directo
+    agregarAlCarrito(card, btn, requiereHorario && abiertos.length === 1 ? abiertos[0] : null);
 });
 
-// Más cantidad
+// Más cantidad (desde la card del menú)
 $(document).on('click', '.btn-mas', function (e) {
     e.stopPropagation();
     const id = $(this).data('id');
     if (cart[id]) {
         cart[id].cantidad++;
-        $('#qty_' + id).text(cart[id].cantidad);
-        renderCartBar();
+        syncUI();
     }
 });
 
-// Menos cantidad
+// Menos cantidad (desde la card del menú)
 $(document).on('click', '.btn-menos', function (e) {
     e.stopPropagation();
     const id = $(this).data('id');
     if (!cart[id]) return;
     cart[id].cantidad--;
     if (cart[id].cantidad <= 0) {
-        delete cart[id];
-        const card = $('[data-id="' + id + '"].item-card');
-        card.removeClass('selected');
-        $('#qtyCtrl_' + id).hide();
-        card.find('.btn-agregar').show();
-    } else {
-        $('#qty_' + id).text(cart[id].cantidad);
+        quitarDelCarrito(id);
     }
-    renderCartBar();
+    syncUI();
+});
+
+// +/- desde el carrito flotante
+$(document).on('click', '.drawer-mas', function () {
+    const id = $(this).data('id');
+    if (cart[id]) {
+        cart[id].cantidad++;
+        syncUI();
+    }
+});
+
+$(document).on('click', '.drawer-menos', function () {
+    const id = $(this).data('id');
+    if (!cart[id]) return;
+    cart[id].cantidad--;
+    if (cart[id].cantidad <= 0) {
+        quitarDelCarrito(id);
+    }
+    syncUI();
+});
+
+// Abrir/cerrar el carrito flotante
+$('#cartBarLeft').on('click', function () {
+    if (Object.keys(cart).length) $('#cartDrawer').toggleClass('open');
+});
+$('#btnCerrarCarrito').on('click', function () {
+    $('#cartDrawer').removeClass('open');
 });
 
 // Filtro por categoría
@@ -294,10 +514,13 @@ $('#btnPedir').on('click', function () {
     const keys = Object.keys(cart);
     if (!keys.length) return;
 
+    $('#cartDrawer').removeClass('open');
+
     let html = '<div class="border rounded p-2" style="font-size:.85rem;max-height:160px;overflow-y:auto;">';
     keys.forEach(id => {
+        const horarioTag = cart[id].servicio ? ' <span class="text-muted">(' + etiquetaHorario(cart[id].servicio) + ')</span>' : '';
         html += `<div class="d-flex justify-content-between">
-            <span>${cart[id].cantidad}× ${cart[id].nombre}</span>
+            <span>${cart[id].cantidad}× ${cart[id].nombre}${horarioTag}</span>
             <span class="text-success">${formatMoney(cart[id].precio * cart[id].cantidad)}</span>
         </div>`;
     });
@@ -446,6 +669,7 @@ $('#btnEnviarPedido').on('click', function () {
         precio:   it.precio,
         cantidad: it.cantidad,
         subtotal: parseFloat((it.precio * it.cantidad).toFixed(2)),
+        servicio: it.servicio || undefined,
     }));
 
     const payload = {
@@ -504,16 +728,16 @@ $('#btnEnviarPedido').on('click', function () {
 // Nuevo pedido
 $('#btnNuevoPedido').on('click', function () {
     $('#modalExito').modal('hide');
+    $('#cartDrawer').removeClass('open');
     // Limpiar carrito
     Object.keys(cart).forEach(id => {
-        delete cart[id];
         const card = $('[data-id="' + id + '"].item-card');
         card.removeClass('selected');
-        $('#qtyCtrl_' + id).hide();
-        card.find('.btn-agregar').show();
-        $('#qty_' + id).text(1);
+        $('#qtyCtrl_' + id).removeClass('show');
+        card.find('.btn-agregar').removeClass('hide');
+        delete cart[id];
     });
-    renderCartBar();
+    syncUI();
 });
 </script>
 

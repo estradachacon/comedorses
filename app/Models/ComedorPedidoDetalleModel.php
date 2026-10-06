@@ -8,7 +8,7 @@ class ComedorPedidoDetalleModel extends Model
 {
     protected $table         = 'comedor_pedidos_detalles';
     protected $primaryKey    = 'id';
-    protected $allowedFields = ['pedido_id', 'item_id', 'item_nombre', 'precio_unitario', 'cantidad', 'subtotal'];
+    protected $allowedFields = ['pedido_id', 'item_id', 'item_nombre', 'servicio', 'precio_unitario', 'cantidad', 'subtotal'];
     protected $useTimestamps = false;
     protected $createdField  = 'created_at';
 

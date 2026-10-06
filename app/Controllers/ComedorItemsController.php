@@ -78,6 +78,64 @@ class ComedorItemsController extends BaseController
         return redirect()->to('/comedor/items')->with('success', 'Item actualizado.');
     }
 
+    // Edición rápida (modal) usada desde /comedor/menu: nombre, precio, descripción, categoría, disponible y foto opcional.
+    public function actualizarRapido(int $id)
+    {
+        if (!tienePermiso('gestionar_items_comedor')) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Sin permiso.']);
+        }
+
+        $item = $this->itemModel->find($id);
+        if (!$item) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Item no encontrado.']);
+        }
+
+        $nombre = trim((string) $this->request->getPost('nombre'));
+        $precio = $this->request->getPost('precio');
+
+        if (!$nombre || !is_numeric($precio)) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Nombre y precio válidos son requeridos.']);
+        }
+
+        // No incluye 'disponible': ese campo se gestiona desde el catálogo (/comedor/items),
+        // no desde este modal rápido en la vista del menú diario.
+        $data = [
+            'categoria_id' => $this->request->getPost('categoria_id') ?: null,
+            'nombre'       => $nombre,
+            'descripcion'  => $this->request->getPost('descripcion'),
+            'precio'       => $precio,
+        ];
+
+        $foto = $this->request->getFile('foto');
+        if ($foto && $foto->isValid() && !$foto->hasMoved()) {
+            if (!in_array(strtolower($foto->getClientExtension()), ['jpg', 'jpeg', 'png', 'webp'])) {
+                return $this->response->setJSON(['ok' => false, 'msg' => 'La foto debe ser JPG, PNG o WEBP.']);
+            }
+            if ($foto->getSize() > 3 * 1024 * 1024) {
+                return $this->response->setJSON(['ok' => false, 'msg' => 'La foto no debe superar 3MB.']);
+            }
+            $nombreFoto = $foto->getRandomName();
+            $foto->move('upload/comedor_items', $nombreFoto);
+            $data['foto'] = $nombreFoto;
+        }
+
+        $this->itemModel->update($id, $data);
+        $actualizado = $this->itemModel->find($id);
+
+        return $this->response->setJSON([
+            'ok'   => true,
+            'item' => [
+                'id'          => $actualizado['id'],
+                'nombre'      => $actualizado['nombre'],
+                'precio'      => $actualizado['precio'],
+                'descripcion' => $actualizado['descripcion'],
+                'categoria_id'=> $actualizado['categoria_id'],
+                'disponible'  => (int) $actualizado['disponible'],
+                'foto_url'    => $actualizado['foto'] ? base_url('upload/comedor_items/' . $actualizado['foto']) : null,
+            ],
+        ]);
+    }
+
     public function toggleDisponible(int $id)
     {
         if (!tienePermiso('gestionar_items_comedor')) {

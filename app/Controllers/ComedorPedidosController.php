@@ -7,6 +7,7 @@ use App\Models\ComedorPedidoDetalleModel;
 use App\Models\ComedorItemModel;
 use App\Models\ComedorClienteModel;
 use App\Models\ComedorPagoModel;
+use App\Models\ComedorMenuDiaModel;
 
 class ComedorPedidosController extends BaseController
 {
@@ -15,6 +16,7 @@ class ComedorPedidosController extends BaseController
     protected ComedorItemModel          $itemModel;
     protected ComedorClienteModel       $clienteModel;
     protected ComedorPagoModel          $pagoModel;
+    protected ComedorMenuDiaModel       $menuDiaModel;
 
     public function __construct()
     {
@@ -23,6 +25,22 @@ class ComedorPedidosController extends BaseController
         $this->itemModel    = new ComedorItemModel();
         $this->clienteModel = new ComedorClienteModel();
         $this->pagoModel    = new ComedorPagoModel();
+        $this->menuDiaModel = new ComedorMenuDiaModel();
+    }
+
+    // Horario de un item tomado directamente en el POS: automático si tiene un solo
+    // horario asignado hoy; sin restricción (NULL) si tiene 0, 2 (ambiguo) o 3 (todo el día).
+    private function servicioParaItemPos(?int $itemId, string $fecha): ?string
+    {
+        if (!$itemId) {
+            return null;
+        }
+        $menuDia = $this->menuDiaModel->where('fecha', $fecha)->where('item_id', $itemId)->first();
+        if (!$menuDia) {
+            return null;
+        }
+        $asignados = serviciosAsignadosComedor($menuDia);
+        return count($asignados) === 1 ? $asignados[0] : null;
     }
 
     public function index()
@@ -106,6 +124,7 @@ class ComedorPedidosController extends BaseController
                     'pedido_id'       => $pedidoId,
                     'item_id'         => $item['item_id'] ?? null,
                     'item_nombre'     => $item['nombre'],
+                    'servicio'        => $this->servicioParaItemPos($item['item_id'] ?? null, date('Y-m-d')),
                     'precio_unitario' => $item['precio'],
                     'cantidad'        => $item['cantidad'],
                     'subtotal'        => $item['subtotal'],
@@ -151,7 +170,7 @@ class ComedorPedidosController extends BaseController
         }
         $data['detalles'] = $this->detalleModel->delPedido($id);
         $data['pagos']    = $this->pagoModel->delPedido($id);
-        $data['title']    = 'Pedido ' . $data['pedido']['numero'];
+        $data['title']    = formatearNumeroPedido($data['pedido']['numero']);
         return view('comedor/pedidos/ver', $data);
     }
 
@@ -160,13 +179,15 @@ class ComedorPedidosController extends BaseController
         if (!tienePermiso('confirmar_solicitud_comedor')) {
             return $this->response->setJSON([]);
         }
-        $pedidos = $this->headModel
-            ->select('comedor_pedidos_head.*')
-            ->where('estado', 'solicitud')
-            ->where('anulado', 0)
-            ->orderBy('id', 'ASC')
+        $rows = $this->headModel
+            ->select('comedor_pedidos_head.*, comedor_pedidos_detalles.item_nombre, comedor_pedidos_detalles.cantidad')
+            ->join('comedor_pedidos_detalles', 'comedor_pedidos_detalles.pedido_id = comedor_pedidos_head.id', 'left')
+            ->where('comedor_pedidos_head.estado', 'solicitud')
+            ->where('comedor_pedidos_head.anulado', 0)
+            ->orderBy('comedor_pedidos_head.id', 'ASC')
             ->findAll();
-        return $this->response->setJSON($pedidos);
+
+        return $this->response->setJSON($this->agruparConItems($rows));
     }
 
     public function listaSolicitudes()
@@ -174,17 +195,24 @@ class ComedorPedidosController extends BaseController
         if (!tienePermiso('confirmar_solicitud_comedor')) {
             return redirect()->back()->with('permiso_error', 'Sin permiso.');
         }
-        $data['solicitudes'] = $this->headModel
+        $rows = $this->headModel
             ->select('comedor_pedidos_head.*, comedor_pedidos_detalles.item_nombre, comedor_pedidos_detalles.cantidad')
             ->join('comedor_pedidos_detalles', 'comedor_pedidos_detalles.pedido_id = comedor_pedidos_head.id', 'left')
             ->where('comedor_pedidos_head.estado', 'solicitud')
             ->where('comedor_pedidos_head.anulado', 0)
-            ->orderBy('comedor_pedidos_head.id', 'DESC')
+            ->orderBy('comedor_pedidos_head.id', 'ASC')
             ->findAll();
 
-        // Agrupar detalles por pedido
+        $data['solicitudes'] = $this->agruparConItems($rows);
+        $data['title'] = 'Solicitudes de Clientes';
+        return view('comedor/pedidos/solicitudes_lista', $data);
+    }
+
+    // Agrupa filas pedido+detalle (resultado de un join) en una fila por pedido con su lista de items.
+    private function agruparConItems(array $rows): array
+    {
         $agrupado = [];
-        foreach ($data['solicitudes'] as $row) {
+        foreach ($rows as $row) {
             $id = $row['id'];
             if (!isset($agrupado[$id])) {
                 $agrupado[$id] = $row;
@@ -194,9 +222,7 @@ class ComedorPedidosController extends BaseController
                 $agrupado[$id]['items'][] = $row['cantidad'] . '× ' . $row['item_nombre'];
             }
         }
-        $data['solicitudes'] = array_values($agrupado);
-        $data['title'] = 'Solicitudes de Clientes';
-        return view('comedor/pedidos/solicitudes_lista', $data);
+        return array_values($agrupado);
     }
 
     public function confirmar(int $id)

@@ -81,6 +81,14 @@ $primaryColor = setting('primary_color') ?? '#1d2744';
                 </a>
                 <?php endif; ?>
 
+                <!-- COMEDOR: ENTREGAS -->
+                <?php if (tienePermiso('gestionar_entregas_comedor')): ?>
+                <a class="nav-link" href="/comedor/entregas">
+                    <div class="sb-nav-link-icon" style="color:#6f42c1 !important;"><i class="fa-solid fa-dolly"></i></div>
+                    Entregas
+                </a>
+                <?php endif; ?>
+
                 <!-- COMEDOR: MENÚ DEL DÍA -->
                 <?php if (tienePermiso('gestionar_menu_comedor')): ?>
                 <a class="nav-link" href="/comedor/menu">

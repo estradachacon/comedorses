@@ -106,7 +106,7 @@
         <div class="rep-row">
             <div style="flex:1;min-width:0;">
                 <div class="d-flex align-items-center flex-wrap mb-1" style="gap:5px;">
-                    <a href="/comedor/pedidos/ver/<?= $p['id'] ?>" class="rep-num"><?= esc($p['numero']) ?></a>
+                    <a href="/comedor/pedidos/ver/<?= $p['id'] ?>" class="rep-num"><?= esc(formatearNumeroPedido($p['numero'])) ?></a>
                     <span class="badge badge-<?= $mapE[$p['estado']] ?? 'light' ?> rep-badge"><?= ucfirst($p['estado']) ?></span>
                     <span class="badge badge-<?= $p['tipo_pago']==='contado'?'success':'warning text-dark' ?> rep-badge"><?= ucfirst($p['tipo_pago']) ?></span>
                 </div>

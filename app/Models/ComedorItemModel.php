@@ -8,7 +8,7 @@ class ComedorItemModel extends Model
 {
     protected $table         = 'comedor_items';
     protected $primaryKey    = 'id';
-    protected $allowedFields = ['categoria_id', 'nombre', 'descripcion', 'precio', 'disponible'];
+    protected $allowedFields = ['categoria_id', 'nombre', 'descripcion', 'precio', 'disponible', 'foto'];
     protected $useTimestamps = true;
 
     public function disponibles(): array
