@@ -18,37 +18,54 @@
     border: 1px solid #e3e6ea;
     background: #f8f9fa;
 }
+.item-nombre-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.url-publica-txt {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    max-width: 100%;
+    vertical-align: bottom;
+}
+@media (max-width: 576px) {
+    .menu-header-row { flex-wrap: wrap; gap: 8px; }
+    .menu-header-row h4 { font-size: 1.15rem; }
+    .url-publica-wrap { max-width: 100%; }
+    .btn-srv { font-size: .8rem !important; padding: 4px 11px !important; }
+    #contadorMenu { margin-left: 0 !important; order: 99; width: 100%; text-align: center; }
+}
 </style>
 
 <div class="container-fluid px-4">
-    <div class="d-flex justify-content-between  mb-3">
+    <div class="d-flex justify-content-between mb-3 menu-header-row">
         <h4 class="mb-0">
             <i class="fa-solid fa-clipboard-list mr-2 text-success"></i><?= esc($title) ?>
         </h4>
-        <div class="d-flex  gap-2">
+        <div class="d-flex url-publica-wrap" style="min-width:0;">
             <!-- URL pública para QR -->
-            <span class="text-muted small mr-2">
+            <span class="text-muted small" style="min-width:0;">
                 <i class="fa-solid fa-qrcode mr-1"></i>
-                <a href="<?= esc($urlPublico) ?>" target="_blank"><?= esc($urlPublico) ?></a>
+                <a href="<?= esc($urlPublico) ?>" target="_blank" class="url-publica-txt"><?= esc($urlPublico) ?></a>
             </span>
         </div>
     </div>
 
     <!-- Filtro de fecha + acciones rápidas -->
     <div class="card shadow-sm mb-4">
-        <div class="card-body py-2 d-flex flex-wrap  gap-2">
-            <form method="get" class="d-flex  mr-3">
+        <div class="card-body py-2 d-flex flex-wrap" style="gap:8px;">
+            <form method="get" class="d-flex align-items-center mr-3 mb-1">
                 <label class="mr-2 mb-0 text-muted small font-weight-bold">FECHA</label>
                 <input type="date" name="fecha" class="form-control form-control-sm" value="<?= esc($fecha) ?>" style="width:160px;">
                 <button type="submit" class="btn btn-outline-secondary btn-sm ml-2">
                     <i class="fa-solid fa-filter"></i>
                 </button>
             </form>
-            <button class="btn btn-sm btn-outline-success mr-1" id="btnAgregarTodos">
+            <button class="btn btn-sm btn-outline-success mr-1 mb-1" id="btnAgregarTodos">
                 <i class="fa-solid fa-check-double mr-1"></i>Agregar todos
             </button>
             <?php if (!empty($ultimoMenu)): ?>
-            <button class="btn btn-sm btn-outline-primary mr-1" id="btnCopiarUltimo"
+            <button class="btn btn-sm btn-outline-primary mr-1 mb-1" id="btnCopiarUltimo"
                     data-fecha-origen="<?= esc($ultimoMenu['fecha']) ?>"
                     data-total="<?= (int)$ultimoMenu['total'] ?>">
                 <i class="fa-solid fa-copy mr-1"></i>Copiar del
@@ -56,10 +73,10 @@
                 <span class="badge badge-light ml-1"><?= (int)$ultimoMenu['total'] ?></span>
             </button>
             <?php endif; ?>
-            <button class="btn btn-sm btn-outline-danger mr-1" id="btnLimpiar">
+            <button class="btn btn-sm btn-outline-danger mr-1 mb-1" id="btnLimpiar">
                 <i class="fa-solid fa-trash mr-1"></i>Limpiar menú
             </button>
-            <button class="btn btn-sm btn-success" id="btnWhatsapp">
+            <button class="btn btn-sm btn-success mb-1" id="btnWhatsapp">
                 <i class="fa-brands fa-whatsapp mr-1"></i>WhatsApp
             </button>
             <span class="badge badge-success badge-pill ml-auto px-3 py-2" id="contadorMenu">
@@ -96,7 +113,7 @@
                 $activo = in_array($item['id'], $enMenu);
                 $srv    = $servicios[$item['id']] ?? ['desayuno' => 0, 'refrigerio' => 0, 'almuerzo' => 0];
             ?>
-            <div class="col-md-4 col-lg-3 mb-3">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
                 <div class="card h-100 shadow-sm item-toggle-card <?= $activo ? 'border-success' : '' ?>"
                      data-id="<?= $item['id'] ?>" data-activo="<?= $activo ? 1 : 0 ?>"
                      data-nombre="<?= esc($item['nombre'], 'attr') ?>"
@@ -117,13 +134,14 @@
                                     <label class="custom-control-label" for="sw_<?= $item['id'] ?>"></label>
                                 </div>
                             </div>
-                            <div class="flex-grow-1 min-width-0">
+                            <div class="flex-grow-1" style="min-width:0;">
                                 <div class="font-weight-bold item-nombre-txt" style="font-size:.88rem;"><?= esc($item['nombre']) ?></div>
                             </div>
                             <div class="text-success font-weight-bold ml-2 item-precio-txt" style="font-size:.9rem; flex-shrink:0;">
                                 $<?= number_format($item['precio'], 2) ?>
                             </div>
-                            <button type="button" class="btn btn-sm btn-link text-muted btn-editar-item p-0 ml-2" title="Editar">
+                            <button type="button" class="btn btn-sm btn-link text-muted btn-editar-item p-0 ml-2"
+                                    title="Editar" style="flex-shrink:0; min-width:30px; min-height:30px;">
                                 <i class="fa-solid fa-pen"></i>
                             </button>
                         </div>

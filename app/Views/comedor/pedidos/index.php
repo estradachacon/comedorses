@@ -187,6 +187,16 @@
                         </span>
                     </div>
                     <div class="pedido-cliente mt-1"><?= esc($p['cliente_nombre']) ?></div>
+                    <?php
+                        $deudaReasignada = !empty($p['comensal_actual_nombre'])
+                            && mb_strtolower(trim($p['comensal_actual_nombre'])) !== mb_strtolower(trim($p['cliente_nombre']));
+                    ?>
+                    <?php if ($deudaReasignada): ?>
+                    <div class="text-info" style="font-size:.74rem;font-weight:600;"
+                         title="El pedido se tomó a nombre de un comensal, pero la deuda/cuenta quedó atribuida a otro">
+                        <i class="fa-solid fa-right-left mr-1"></i>Atribuido a <?= esc($p['comensal_actual_nombre']) ?>
+                    </div>
+                    <?php endif; ?>
                     <?php if (!empty($p['cajero_nombre'])): ?>
                     <div class="pedido-cajero"><i class="fa-solid fa-user-tie mr-1"></i><?= esc($p['cajero_nombre']) ?></div>
                     <?php endif; ?>
@@ -217,50 +227,6 @@
             <p class="mb-0 small">Sin resultados para tu búsqueda.</p>
         </div>
     <?php endif; ?>
-    </div>
-</div>
-
-<!-- Modal: confirmar solicitud -->
-<div class="modal fade" id="modalConfirmar" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fa-solid fa-check-circle text-success mr-2"></i>Confirmar Solicitud
-                </h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <strong id="confCliente"></strong>
-                    <div class="text-muted small" id="confDetalle"></div>
-                    <div class="font-weight-bold text-primary mt-1" id="confTotal"></div>
-                </div>
-                <div class="form-group mb-2">
-                    <label class="font-weight-bold">Tipo de pago</label>
-                    <div class="btn-group btn-group-sm w-100" role="group">
-                        <button type="button" class="btn btn-outline-success tipo-conf-btn active" data-tipo="contado">
-                            <i class="fa-solid fa-money-bill-wave mr-1"></i>Contado
-                        </button>
-                        <button type="button" class="btn btn-outline-warning tipo-conf-btn" data-tipo="fiado">
-                            <i class="fa-solid fa-clock mr-1"></i>Fiado
-                        </button>
-                    </div>
-                </div>
-                <div id="confClienteRow" style="display:none;" class="form-group mb-0">
-                    <label class="small font-weight-bold text-muted">COMENSAL REGISTRADO (para fiado)</label>
-                    <input type="text" id="confClienteInput" class="form-control form-control-sm" placeholder="Buscar comensal...">
-                    <div id="confClienteSug" class="list-group" style="position:absolute;z-index:999;width:90%;display:none;"></div>
-                    <input type="hidden" id="confClienteId">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" id="btnConfirmarOk">
-                    <i class="fa-solid fa-check mr-1"></i>Confirmar
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -307,8 +273,6 @@ $(document).on('click', '.btn-anular', function () {
 
 <?php if (tienePermiso('confirmar_solicitud_comedor')): ?>
 // ── Solicitudes ───────────────────────────────────────────────────────
-let solicitudActiva = null;
-
 function renderSolicitudes(lista) {
     if (!lista.length) { $('#panelSolicitudes').hide(); return; }
     $('#panelSolicitudes').show();
@@ -342,9 +306,7 @@ function renderSolicitudes(lista) {
                         <i class="fa-solid fa-eye"></i>
                     </a>
                     <button class="btn btn-sm btn-success btn-confirmar-sol" style="padding:2px 10px;"
-                        data-id="${p.id}" data-nombre="${p.cliente_nombre}"
-                        data-total="${p.total}" data-numero="${p.numero}"
-                        data-tipo-pago="${p.tipo_pago}" data-cliente-id="${p.cliente_id || ''}">
+                        data-id="${p.id}" data-nombre="${p.cliente_nombre}">
                         <i class="fa-solid fa-check mr-1"></i>Confirmar
                     </button>
                 </div>
@@ -361,91 +323,39 @@ function cargarSolicitudes() {
 cargarSolicitudes();
 setInterval(cargarSolicitudes, 15000);
 
+// Confirmar: solo acepta la solicitud y la pasa al control del comedor (NO la entrega ni
+// resuelve el pago — eso se decide hasta /comedor/entregas). Por eso no se vuelve a preguntar
+// tipo de pago ni comensal aquí: ya se definieron cuando el cliente hizo el pedido.
 $(document).on('click', '.btn-confirmar-sol', function () {
-    solicitudActiva = {
-        id:        $(this).data('id'),
-        nombre:    $(this).data('nombre'),
-        total:     parseFloat($(this).data('total')),
-        numero:    $(this).data('numero'),
-        tipoPago:  $(this).data('tipo-pago'),
-        clienteId: $(this).data('cliente-id'),
-    };
-    $('#confCliente').text(solicitudActiva.nombre);
-    $('#confDetalle').text(formatearNumeroPedido(solicitudActiva.numero));
-    $('#confTotal').text('Total: $' + solicitudActiva.total.toFixed(2));
+    const id     = $(this).data('id');
+    const nombre = $(this).data('nombre');
+    const btn    = $(this);
 
-    const esFiado = solicitudActiva.tipoPago === 'fiado';
-    $('.tipo-conf-btn').removeClass('active');
-    $('.tipo-conf-btn[data-tipo="' + (esFiado ? 'fiado' : 'contado') + '"]').addClass('active');
+    Swal.fire({
+        title: '¿Confirmar esta solicitud?',
+        text: `Se acepta el pedido de ${nombre} y pasa al control del comedor. El pago se resuelve hasta la entrega.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, confirmar',
+        cancelButtonText: 'Cancelar',
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
 
-    if (esFiado && solicitudActiva.clienteId) {
-        $('#confClienteRow').show();
-        $('#confClienteInput').val(solicitudActiva.nombre);
-        $('#confClienteId').val(solicitudActiva.clienteId);
-    } else {
-        $('#confClienteRow').toggle(esFiado);
-        $('#confClienteInput,#confClienteId').val('');
-    }
-    $('#modalConfirmar').modal('show');
-});
-
-$('.tipo-conf-btn').on('click', function () {
-    $('.tipo-conf-btn').removeClass('active');
-    $(this).addClass('active');
-    const esFiado = $(this).data('tipo') === 'fiado';
-    $('#confClienteRow').toggle(esFiado);
-    if (!esFiado) $('#confClienteInput,#confClienteId').val('');
-});
-
-let searchTimer;
-$('#confClienteInput').on('input', function () {
-    $('#confClienteId').val('');
-    clearTimeout(searchTimer);
-    const q = $(this).val().trim();
-    if (q.length < 2) { $('#confClienteSug').hide(); return; }
-    searchTimer = setTimeout(() => {
-        $.get('/comedor/clientes/buscar', { q }).done(data => {
-            if (!data.length) { $('#confClienteSug').hide(); return; }
-            $('#confClienteSug').html(
-                data.map(c => `<a href="#" class="list-group-item list-group-item-action py-1 px-2 conf-cli-sug"
-                    data-id="${c.id}" data-nombre="${c.nombre}" style="font-size:.85rem;">${c.nombre}</a>`).join('')
-            ).show();
-        });
-    }, 250);
-});
-
-$(document).on('click', '.conf-cli-sug', function (e) {
-    e.preventDefault();
-    $('#confClienteInput').val($(this).data('nombre'));
-    $('#confClienteId').val($(this).data('id'));
-    $('#confClienteSug').hide();
-});
-
-$(document).on('click', function (e) {
-    if (!$(e.target).closest('#confClienteInput,#confClienteSug').length) $('#confClienteSug').hide();
-});
-
-$('#btnConfirmarOk').on('click', function () {
-    const tipoPago  = $('.tipo-conf-btn.active').data('tipo');
-    const clienteId = $('#confClienteId').val();
-    if (tipoPago === 'fiado' && !clienteId) {
-        Swal.fire('Comensal requerido', 'Selecciona un comensal registrado para fiado.', 'warning');
-        return;
-    }
-    $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
-    $.post('/comedor/pedidos/confirmar/' + solicitudActiva.id, {
-        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
-        tipo_pago: tipoPago, cliente_id: clienteId,
-    }).done(res => {
-        if (res.ok) {
-            $('#modalConfirmar').modal('hide');
-            Swal.fire({ icon: 'success', title: '¡Confirmado!', timer: 1200, showConfirmButton: false })
-                .then(() => { cargarSolicitudes(); location.reload(); });
-        } else {
-            Swal.fire('Error', res.msg, 'error');
-        }
-    }).always(() => {
-        $('#btnConfirmarOk').prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar');
+        $.post('/comedor/pedidos/confirmar/' + id, { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' })
+            .done(res => {
+                if (res.ok) {
+                    Swal.fire({ icon: 'success', title: '¡Confirmado!', timer: 1000, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Error', res.msg, 'error');
+                    btn.prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar');
+                }
+            })
+            .fail(() => {
+                Swal.fire('Error', 'No se pudo confirmar.', 'error');
+                btn.prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar');
+            });
     });
 });
 <?php endif; ?>

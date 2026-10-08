@@ -1,17 +1,47 @@
 <?= $this->extend('Layouts/mainbody') ?>
 <?= $this->section('content') ?>
 
-<div class="container-fluid px-4">
-    <div class="d-flex justify-content-between mb-4">
-        <h4 class="mb-0">
+<style>
+:root {
+    --sap-border: #d9d9d9;
+    --sap-bg: #ffffff;
+    --sap-text: #32363a;
+    --sap-text-muted: #6a6d70;
+}
+.deudor-card {
+    border-radius: 4px;
+    border: 1px solid var(--sap-border);
+    background: var(--sap-bg);
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    transition: border-color .12s, background .12s;
+}
+.deudor-card:hover { border-color: #b7b7b7; background: #fafbfc; }
+.deudor-nombre { font-weight: 600; font-size: .92rem; color: var(--sap-text); }
+.deudor-telefono { font-size: .76rem; color: var(--sap-text-muted); }
+.search-box { position: relative; }
+.search-box .fa-magnifying-glass {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: #aaa; font-size: .85rem;
+}
+.search-box input { padding-left: 30px; }
+@media (max-width: 480px) {
+    .deudor-card .deudor-acciones { width: 100%; margin-top: 8px; justify-content: flex-start !important; }
+    .deudor-card .deudor-acciones .btn { flex: 1; }
+}
+</style>
+
+<div class="container-fluid px-3">
+    <div class="d-flex justify-content-between align-items-start mb-3 pt-1" style="flex-wrap:wrap;gap:8px;">
+        <h5 class="mb-0 font-weight-bold">
             <i class="fa-solid fa-hand-holding-dollar mr-2 text-danger"></i><?= esc($title) ?>
-        </h4>
+        </h5>
         <?php
             $totalDeudores = count(array_filter($comensales, fn($c) => (float) $c['saldo_pendiente'] > 0));
             $totalVueltos  = count(array_filter($comensales, fn($c) => (float) ($c['vuelto_pendiente'] ?? 0) > 0));
         ?>
-        <span class="badge badge-danger badge-pill px-3 py-2" style="font-size:.85rem;">
-            <?= $totalDeudores ?> con deuda · <?= $totalVueltos ?> con vuelto pendiente · <?= count($comensales) ?> comensal<?= count($comensales) !== 1 ? 'es' : '' ?>
+        <span class="badge badge-danger badge-pill px-3 py-2" style="font-size:.8rem;">
+            <?= $totalDeudores ?> con deuda · <?= $totalVueltos ?> con vuelto · <?= count($comensales) ?> comensal<?= count($comensales) !== 1 ? 'es' : '' ?>
         </span>
     </div>
 
@@ -21,80 +51,83 @@
             No hay comensales registrados todavía.
         </div>
     <?php else: ?>
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <table id="tablaDeudores" class="table table-hover mb-0">
-                <thead class="thead-light">
-                    <tr>
-                        <th>Comensal</th>
-                        <th>Teléfono</th>
-                        <th class="text-right">Saldo Pendiente</th>
-                        <th class="text-right">Vuelto Pendiente</th>
-                        <?php if (tienePermiso('registrar_pago_deudor_comedor')): ?><th class="text-center">Acciones</th><?php endif; ?>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($comensales as $d): ?>
-                    <?php
-                        $tieneDeuda  = (float) $d['saldo_pendiente'] > 0;
-                        $tieneVuelto = (float) ($d['vuelto_pendiente'] ?? 0) > 0;
-                    ?>
-                    <tr>
-                        <td class="font-weight-bold"><?= esc($d['nombre']) ?></td>
-                        <td class="text-muted"><?= esc($d['telefono'] ?? '—') ?></td>
-                        <td class="text-right">
-                            <?php if ($tieneDeuda): ?>
-                                <span class="badge badge-danger badge-pill px-2 py-1" style="font-size:.9rem;">
-                                    $<?= number_format($d['saldo_pendiente'], 2) ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="badge badge-light text-muted px-2 py-1" style="font-size:.9rem;">
-                                    $0.00
-                                </span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="text-right">
-                            <?php if ($tieneVuelto): ?>
-                                <span class="badge badge-info badge-pill px-2 py-1" style="font-size:.9rem;">
-                                    $<?= number_format($d['vuelto_pendiente'], 2) ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="badge badge-light text-muted px-2 py-1" style="font-size:.9rem;">
-                                    $0.00
-                                </span>
-                            <?php endif; ?>
-                        </td>
-                        <?php if (tienePermiso('registrar_pago_deudor_comedor')): ?>
-                        <td class="text-center">
-                            <?php if ($tieneDeuda): ?>
-                            <button class="btn btn-sm btn-success btn-pagar"
-                                data-id="<?= $d['id'] ?>"
-                                data-nombre="<?= esc($d['nombre'], 'attr') ?>"
-                                data-saldo="<?= $d['saldo_pendiente'] ?>">
-                                <i class="fa-solid fa-money-bill-wave mr-1"></i>Registrar Pago
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary btn-ver-pedidos"
-                                data-id="<?= $d['id'] ?>" data-nombre="<?= esc($d['nombre'], 'attr') ?>">
-                                <i class="fa-solid fa-list"></i>
-                            </button>
-                            <?php endif; ?>
-                            <?php if ($tieneVuelto): ?>
-                            <button class="btn btn-sm btn-info btn-vuelto"
-                                data-id="<?= $d['id'] ?>"
-                                data-nombre="<?= esc($d['nombre'], 'attr') ?>"
-                                data-vuelto="<?= $d['vuelto_pendiente'] ?>">
-                                <i class="fa-solid fa-hand-holding-dollar mr-1"></i>Dar Vuelto
-                            </button>
-                            <?php endif; ?>
-                            <?php if (!$tieneDeuda && !$tieneVuelto): ?>
-                            <span class="text-success small"><i class="fa-solid fa-circle-check mr-1"></i>Al día</span>
-                            <?php endif; ?>
-                        </td>
-                        <?php endif; ?>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+
+    <div class="search-box mb-3">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="buscadorDeudores" class="form-control form-control-sm"
+               placeholder="Buscar comensal por nombre o teléfono…">
+    </div>
+
+    <div id="listaDeudores">
+        <?php foreach ($comensales as $d): ?>
+        <?php
+            $tieneDeuda  = (float) $d['saldo_pendiente'] > 0;
+            $tieneVuelto = (float) ($d['vuelto_pendiente'] ?? 0) > 0;
+            $puedeCompensar = $tieneDeuda && $tieneVuelto;
+        ?>
+        <div class="deudor-card d-flex justify-content-between align-items-center"
+             style="flex-wrap:wrap;"
+             data-buscar="<?= strtolower(esc($d['nombre'], 'attr') . ' ' . esc($d['telefono'] ?? '', 'attr')) ?>">
+            <div style="min-width:0;flex:1;">
+                <div class="deudor-nombre"><?= esc($d['nombre']) ?></div>
+                <div class="deudor-telefono"><?= esc($d['telefono'] ?? '—') ?></div>
+                <div class="mt-1" style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <?php if ($tieneDeuda): ?>
+                        <span class="badge badge-danger badge-pill px-2 py-1" style="font-size:.8rem;">
+                            Debe $<?= number_format($d['saldo_pendiente'], 2) ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($tieneVuelto): ?>
+                        <span class="badge badge-info badge-pill px-2 py-1" style="font-size:.8rem;">
+                            Vuelto $<?= number_format($d['vuelto_pendiente'], 2) ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php if (!$tieneDeuda && !$tieneVuelto): ?>
+                        <span class="text-success small"><i class="fa-solid fa-circle-check mr-1"></i>Al día</span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($puedeCompensar): ?>
+                <div class="mt-1">
+                    <button class="btn btn-sm btn-outline-primary btn-compensar"
+                        data-id="<?= $d['id'] ?>"
+                        data-nombre="<?= esc($d['nombre'], 'attr') ?>"
+                        data-saldo="<?= $d['saldo_pendiente'] ?>"
+                        data-vuelto="<?= $d['vuelto_pendiente'] ?>">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i>Compensar deuda con vuelto
+                    </button>
+                </div>
+                <?php endif; ?>
+            </div>
+            <?php if (tienePermiso('registrar_pago_deudor_comedor')): ?>
+            <div class="deudor-acciones ml-2" style="display:flex;gap:4px;justify-content:flex-end;flex-shrink:0;">
+                <?php if ($tieneDeuda): ?>
+                <button class="btn btn-sm btn-success btn-pagar"
+                    data-id="<?= $d['id'] ?>"
+                    data-nombre="<?= esc($d['nombre'], 'attr') ?>"
+                    data-saldo="<?= $d['saldo_pendiente'] ?>">
+                    <i class="fa-solid fa-money-bill-wave mr-1"></i>Pago
+                </button>
+                <button class="btn btn-sm btn-outline-secondary btn-ver-pedidos"
+                    data-id="<?= $d['id'] ?>" data-nombre="<?= esc($d['nombre'], 'attr') ?>">
+                    <i class="fa-solid fa-list"></i>
+                </button>
+                <?php endif; ?>
+                <?php if ($tieneVuelto): ?>
+                <button class="btn btn-sm btn-info btn-vuelto"
+                    data-id="<?= $d['id'] ?>"
+                    data-nombre="<?= esc($d['nombre'], 'attr') ?>"
+                    data-vuelto="<?= $d['vuelto_pendiente'] ?>">
+                    <i class="fa-solid fa-hand-holding-dollar mr-1"></i>Vuelto
+                </button>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+
+        <div id="sinResultadosDeudores" class="text-center text-muted py-4" style="display:none;">
+            <i class="fa-solid fa-magnifying-glass mb-2"></i>
+            <p class="mb-0 small">Sin resultados para tu búsqueda.</p>
         </div>
     </div>
     <?php endif; ?>
@@ -274,6 +307,43 @@ $('#btnConfirmarVuelto').on('click', function () {
     });
 });
 
+// Compensar: cuando un comensal debe y a la vez se le debe vuelto, se netean ambos en un
+// solo paso en vez de cobrarle por un lado y darle cambio por otro.
+$('.btn-compensar').on('click', function () {
+    const btn     = $(this);
+    const nombre  = btn.data('nombre');
+    const saldo   = parseFloat(btn.data('saldo'));
+    const vuelto  = parseFloat(btn.data('vuelto'));
+    const monto   = Math.min(saldo, vuelto);
+
+    Swal.fire({
+        title: '¿Compensar deuda con el vuelto?',
+        html: `A <strong>${nombre}</strong> se le aplicarán <strong>$${monto.toFixed(2)}</strong> del vuelto que se le debe
+               directo a su deuda pendiente.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, compensar',
+        cancelButtonText: 'Cancelar',
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+        $.post('/comedor/deudores/compensar', {
+            '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+            cliente_id: btn.data('id'),
+        }).done(res => {
+            if (res.ok) {
+                Swal.fire('¡Compensado!', '', 'success').then(() => location.reload());
+            } else {
+                Swal.fire('Error', res.msg, 'error');
+                btn.prop('disabled', false).html('<i class="fa-solid fa-arrows-rotate mr-1"></i>Compensar deuda con vuelto');
+            }
+        }).fail(() => {
+            Swal.fire('Error', 'No se pudo compensar.', 'error');
+            btn.prop('disabled', false).html('<i class="fa-solid fa-arrows-rotate mr-1"></i>Compensar deuda con vuelto');
+        });
+    });
+});
+
 $('.btn-ver-pedidos').on('click', function () {
     const id     = $(this).data('id');
     const nombre = $(this).data('nombre');
@@ -301,7 +371,16 @@ $('.btn-ver-pedidos').on('click', function () {
     });
 });
 
-$('#tablaDeudores').DataTable({ pageLength: 25, order: [[2, 'desc']] });
+$('#buscadorDeudores').on('input', function () {
+    const q = $(this).val().toLowerCase().trim();
+    let visible = 0;
+    $('.deudor-card').each(function () {
+        const match = !q || $(this).data('buscar').includes(q);
+        $(this).toggle(match);
+        if (match) visible++;
+    });
+    $('#sinResultadosDeudores').toggle(visible === 0 && q.length > 0);
+});
 </script>
 
 <?= $this->endSection() ?>

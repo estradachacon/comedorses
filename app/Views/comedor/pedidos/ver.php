@@ -67,12 +67,24 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
     font-size: .85rem;
 }
 .pago-row:last-child { border-bottom: none; }
+
+@media (max-width: 575px) {
+    .ver-header-row { flex-wrap: wrap; }
+    .ver-header-acciones {
+        width: 100%;
+        order: 99;
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+    .ver-header-acciones .btn { flex: 1; padding: .5rem; }
+}
 </style>
 
 <div class="container-fluid px-3 pb-4">
 
     <!-- ── ENCABEZADO ─────────────────────────────────────────────────── -->
-    <div class="d-flex mb-3 pt-1" style="gap:10px;">
+    <div class="d-flex mb-3 pt-1 ver-header-row" style="gap:10px;">
         <a href="/comedor/pedidos" class="btn btn-outline-secondary btn-sm" style="flex-shrink:0;">
             <i class="fa-solid fa-arrow-left"></i>
         </a>
@@ -93,16 +105,18 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
                 <?php endif; ?>
             </div>
         </div>
+        <div class="ver-header-acciones" style="flex-shrink:0;">
         <?php if (tienePermiso('confirmar_solicitud_comedor') && $pedido['estado'] === 'solicitud' && !$pedido['anulado']): ?>
-        <button class="btn btn-sm btn-success" id="btnConfirmarPedido" style="flex-shrink:0;">
+        <button class="btn btn-sm btn-success" id="btnConfirmarPedido">
             <i class="fa-solid fa-check mr-1"></i><span class="d-none d-sm-inline">Confirmar</span>
         </button>
         <?php endif; ?>
         <?php if (tienePermiso('anular_pedido_comedor') && !$pedido['anulado']): ?>
-        <button class="btn btn-sm btn-outline-danger" id="btnAnularPedido" style="flex-shrink:0;">
+        <button class="btn btn-sm btn-outline-danger" id="btnAnularPedido">
             <i class="fa-solid fa-ban mr-1"></i><span class="d-none d-sm-inline">Anular</span>
         </button>
         <?php endif; ?>
+        </div>
     </div>
 
     <?php if (session()->getFlashdata('success')): ?>
@@ -116,6 +130,14 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
     <div class="alert alert-secondary py-2 mb-3" style="border-radius:10px;">
         <i class="fa-solid fa-ban mr-1"></i>
         Este pedido fue anulado el <?= date('d/m/Y H:i', strtotime($pedido['fecha_anulacion'])) ?>.
+    </div>
+    <?php endif; ?>
+
+    <?php if ($comensalActual): ?>
+    <div class="alert alert-info py-2 mb-3" style="border-radius:10px;">
+        <i class="fa-solid fa-right-left mr-1"></i>
+        El pedido se tomó a nombre de <strong><?= esc($pedido['cliente_nombre']) ?></strong>, pero la
+        cuenta/deuda quedó atribuida a <strong><?= esc($comensalActual['nombre']) ?></strong>.
     </div>
     <?php endif; ?>
 
@@ -154,7 +176,7 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
             <!-- Notas -->
             <?php if (!empty($pedido['notas'])): ?>
             <div class="ver-card">
-                <div class="ver-card-header"><i class="fa-solid fa-note-sticky mr-1"></i> Notas</div>
+                <div class="ver-card-header"><i class="fa-solid fa-note-sticky mr-1"></i> Comentario del comensal</div>
                 <div class="ver-card-body text-muted" style="font-size:.9rem;">
                     <?= esc($pedido['notas']) ?>
                 </div>
@@ -174,6 +196,12 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
                         <span class="kv-label">Cliente</span>
                         <span class="kv-value"><?= esc($pedido['cliente_nombre']) ?></span>
                     </div>
+                    <?php if ($comensalActual): ?>
+                    <div class="kv-row">
+                        <span class="kv-label">Deuda atribuida a</span>
+                        <span class="kv-value text-info"><?= esc($comensalActual['nombre']) ?></span>
+                    </div>
+                    <?php endif; ?>
                     <div class="kv-row">
                         <span class="kv-label">Total</span>
                         <span class="kv-value">$<?= number_format($pedido['total'], 2) ?></span>
@@ -188,6 +216,18 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
                             $<?= number_format($pedido['saldo'], 2) ?>
                         </span>
                     </div>
+                    <?php if ($pedido['tipo_pago'] === 'contado' && !empty($pedido['monto_recibido']) && (float) $pedido['monto_recibido'] > (float) $pedido['total']): ?>
+                    <div class="kv-row">
+                        <span class="kv-label">Pagó con</span>
+                        <span class="kv-value">$<?= number_format($pedido['monto_recibido'], 2) ?></span>
+                    </div>
+                    <div class="kv-row">
+                        <span class="kv-label">Vuelto a entregar</span>
+                        <span class="kv-value text-info">
+                            $<?= number_format($pedido['monto_recibido'] - $pedido['total'], 2) ?>
+                        </span>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

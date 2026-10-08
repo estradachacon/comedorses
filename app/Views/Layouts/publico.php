@@ -19,11 +19,11 @@
         :root {
             --primary: <?= setting('primary_color') ?? '#1d2744' ?>;
         }
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             background: #f4f6f9;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            padding-bottom: 120px;
+            padding-bottom: calc(120px + env(safe-area-inset-bottom));
         }
         /* Header */
         .pub-header {
@@ -63,7 +63,7 @@
         .cat-pills::-webkit-scrollbar { display: none; }
         .cat-pill {
             flex-shrink: 0;
-            padding: 4px 14px;
+            padding: 7px 16px;
             border-radius: 20px;
             border: 2px solid #dee2e6;
             font-size: .8rem;
@@ -73,6 +73,7 @@
             background: #fff;
             transition: all .15s;
         }
+        .cat-pill:active { transform: scale(.94); }
         .cat-pill.active {
             background: var(--primary);
             border-color: var(--primary);
@@ -98,8 +99,9 @@
             align-items: center;
             gap: 12px;
             box-shadow: 0 1px 4px rgba(0,0,0,.07);
-            transition: box-shadow .15s;
+            transition: box-shadow .15s, transform .1s;
         }
+        .item-card:active { transform: scale(.985); }
         .item-card.selected {
             box-shadow: 0 0 0 2px var(--primary), 0 2px 8px rgba(0,0,0,.1);
         }
@@ -132,24 +134,25 @@
         .qty-control {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             margin-top: 6px;
         }
         .qty-btn {
-            width: 28px;
-            height: 28px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             border: none;
             background: #f0f0f0;
-            font-size: 1rem;
+            font-size: 1.05rem;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background .12s;
+            transition: background .12s, transform .1s;
         }
         .qty-btn:hover { background: #dee2e6; }
+        .qty-btn:active { transform: scale(.9); }
         .qty-btn.add-btn {
             background: var(--primary);
             color: #fff;
@@ -158,7 +161,7 @@
         .qty-num {
             font-size: .95rem;
             font-weight: 700;
-            min-width: 22px;
+            min-width: 24px;
             text-align: center;
         }
         /* Barra flotante del carrito */
@@ -169,7 +172,8 @@
             right: 0;
             background: var(--primary);
             color: #fff;
-            padding: .85rem 1.25rem;
+            padding: 1.1rem 1.25rem .85rem;
+            padding-bottom: calc(.85rem + env(safe-area-inset-bottom));
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -179,19 +183,44 @@
             transition: transform .25s cubic-bezier(.4,0,.2,1);
         }
         .cart-bar.visible { transform: translateY(0); }
+        .cart-bar-grabber {
+            position: absolute;
+            top: 7px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 4px;
+            border-radius: 3px;
+            background: rgba(255,255,255,.45);
+        }
         .cart-bar-left { font-size: .85rem; }
         .cart-bar-count { font-size: .75rem; opacity: .8; }
         .cart-bar-total { font-size: 1.1rem; font-weight: 700; }
+        .cart-bar-hint {
+            font-size: .68rem;
+            opacity: .8;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 1px;
+        }
+        .cart-bar-hint i { animation: cartHintBounce 1.6s ease-in-out infinite; }
+        @keyframes cartHintBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
         .cart-bar-btn {
             background: #fff;
             color: var(--primary);
             border: none;
             border-radius: 24px;
-            padding: .55rem 1.4rem;
+            padding: .7rem 1.5rem;
             font-weight: 700;
             font-size: .9rem;
             cursor: pointer;
+            transition: transform .1s;
         }
+        .cart-bar-btn:active { transform: scale(.94); }
         /* Modal confirmación nombre */
         .modal-content { border-radius: 18px 18px 0 0; }
         @media (min-width: 576px) {

@@ -185,7 +185,8 @@ class ComedorPublicoController extends Controller
         $cliente = $this->clienteModel->find($clienteId);
 
         $rows = $this->headModel
-            ->select('comedor_pedidos_head.*, comedor_pedidos_detalles.item_nombre, comedor_pedidos_detalles.cantidad')
+            ->select('comedor_pedidos_head.*, comedor_pedidos_detalles.item_nombre,
+                      comedor_pedidos_detalles.cantidad, comedor_pedidos_detalles.servicio')
             ->join('comedor_pedidos_detalles', 'comedor_pedidos_detalles.pedido_id = comedor_pedidos_head.id', 'left')
             ->where('comedor_pedidos_head.cliente_id', $clienteId)
             ->orderBy('comedor_pedidos_head.id', 'DESC')
@@ -200,7 +201,10 @@ class ComedorPublicoController extends Controller
                 $agrupado[$id]['items'] = [];
             }
             if ($row['item_nombre']) {
-                $agrupado[$id]['items'][] = $row['cantidad'] . '× ' . $row['item_nombre'];
+                $agrupado[$id]['items'][] = [
+                    'texto'    => $row['cantidad'] . '× ' . $row['item_nombre'],
+                    'servicio' => $row['servicio'],
+                ];
             }
         }
 

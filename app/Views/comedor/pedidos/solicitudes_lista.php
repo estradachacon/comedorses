@@ -11,6 +11,7 @@
         </span>
     </div>
 
+    <div id="solicitudesWrapper">
     <?php if (empty($solicitudes)): ?>
         <div class="card shadow-sm">
             <div class="card-body text-center text-muted py-5">
@@ -71,11 +72,7 @@
                         </a>
                         <button class="btn btn-sm btn-success flex-fill btn-confirmar"
                             data-id="<?= $s['id'] ?>"
-                            data-nombre="<?= esc($s['cliente_nombre'], 'attr') ?>"
-                            data-total="<?= $s['total'] ?>"
-                            data-numero="<?= esc($s['numero'], 'attr') ?>"
-                            data-tipo-pago="<?= esc($s['tipo_pago'], 'attr') ?>"
-                            data-cliente-id="<?= $s['cliente_id'] ?? '' ?>">
+                            data-nombre="<?= esc($s['cliente_nombre'], 'attr') ?>">
                             <i class="fa-solid fa-check mr-1"></i>Confirmar
                         </button>
                         <button class="btn btn-sm btn-outline-danger btn-anular-sol flex-shrink-0" data-id="<?= $s['id'] ?>">
@@ -88,49 +85,6 @@
         <?php endforeach; ?>
     </div>
     <?php endif; ?>
-</div>
-
-<!-- Modal confirmar -->
-<div class="modal fade" id="modalConfirmar" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fa-solid fa-check-circle text-success mr-2"></i>Confirmar Solicitud
-                </h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <strong id="confCliente"></strong>
-                    <div class="text-muted small" id="confDetalle"></div>
-                    <div class="font-weight-bold text-primary mt-1" id="confTotal"></div>
-                </div>
-                <div class="form-group mb-2">
-                    <label class="font-weight-bold">Tipo de pago</label>
-                    <div class="btn-group btn-group-sm w-100" role="group">
-                        <button type="button" class="btn btn-outline-success tipo-btn active" data-tipo="contado">
-                            <i class="fa-solid fa-money-bill-wave mr-1"></i>Contado
-                        </button>
-                        <button type="button" class="btn btn-outline-warning tipo-btn" data-tipo="fiado">
-                            <i class="fa-solid fa-clock mr-1"></i>Fiado
-                        </button>
-                    </div>
-                </div>
-                <div id="rowClienteFiado" style="display:none;position:relative;" class="form-group mb-0">
-                    <label class="small font-weight-bold text-muted">COMENSAL REGISTRADO (para fiado)</label>
-                    <input type="text" id="inputClienteFiado" class="form-control form-control-sm" placeholder="Buscar comensal...">
-                    <div id="sugClienteFiado" class="list-group" style="position:absolute;z-index:999;width:100%;display:none;"></div>
-                    <input type="hidden" id="clienteFiadoId">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" id="btnOkConfirmar">
-                    <i class="fa-solid fa-check mr-1"></i>Confirmar
-                </button>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -138,8 +92,6 @@
 
 <?= $this->section('scripts') ?>
 <script>
-let solicitudActiva = null;
-
 // Formatea "P202600009" -> "Pedido 000009-2026" (mismo valor, solo presentación)
 function formatearNumeroPedido(numero) {
     if (!numero) return '';
@@ -148,110 +100,124 @@ function formatearNumeroPedido(numero) {
     return 'Pedido ' + m[2].padStart(6, '0') + '-' + m[1];
 }
 
-// Abrir modal confirmar
-$(document).on('click', '.btn-confirmar', function () {
-    solicitudActiva = {
-        id:        $(this).data('id'),
-        nombre:    $(this).data('nombre'),
-        total:     parseFloat($(this).data('total')),
-        numero:    $(this).data('numero'),
-        tipoPago:  $(this).data('tipo-pago'),
-        clienteId: $(this).data('cliente-id'),
-    };
-    $('#confCliente').text(solicitudActiva.nombre);
-    $('#confDetalle').text(formatearNumeroPedido(solicitudActiva.numero));
-    $('#confTotal').text('Total: $' + solicitudActiva.total.toFixed(2));
+// Formatea "2026-10-08 14:32:10" (datetime de MySQL) -> "08/10 14:32"
+function formatearFechaHora(fecha) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(fecha || '');
+    if (!m) return fecha || '';
+    return `${m[3]}/${m[2]} ${m[4]}:${m[5]}`;
+}
 
-    // Precargar lo que el cliente ya eligió al pedir (el cajero puede corregirlo)
-    const esFiado = solicitudActiva.tipoPago === 'fiado';
-    $('.tipo-btn').removeClass('active');
-    $('.tipo-btn[data-tipo="' + (esFiado ? 'fiado' : 'contado') + '"]').addClass('active');
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+}
 
-    if (esFiado && solicitudActiva.clienteId) {
-        $('#rowClienteFiado').show();
-        $('#inputClienteFiado').val(solicitudActiva.nombre);
-        $('#clienteFiadoId').val(solicitudActiva.clienteId);
-    } else {
-        $('#rowClienteFiado').toggle(esFiado);
-        $('#inputClienteFiado').val('');
-        $('#clienteFiadoId').val('');
-    }
-    $('#modalConfirmar').modal('show');
-});
+// Reconstruye toda la lista a partir del JSON vivo, para que las solicitudes nuevas
+// aparezcan sin que el cajero tenga que refrescar la página manualmente.
+function renderListaSolicitudes(lista) {
+    $('#badgeTotal').text(lista.length + ' pendiente' + (lista.length !== 1 ? 's' : ''));
 
-// Toggle tipo pago
-$('.tipo-btn').on('click', function () {
-    $('.tipo-btn').removeClass('active');
-    $(this).addClass('active');
-    if ($(this).data('tipo') === 'fiado') {
-        $('#rowClienteFiado').show();
-    } else {
-        $('#rowClienteFiado').hide();
-        $('#clienteFiadoId').val('');
-        $('#inputClienteFiado').val('');
-    }
-});
-
-// Buscar comensal para fiado
-let searchTimer;
-$('#inputClienteFiado').on('input', function () {
-    $('#clienteFiadoId').val('');
-    clearTimeout(searchTimer);
-    const q = $(this).val().trim();
-    if (q.length < 2) { $('#sugClienteFiado').hide(); return; }
-    searchTimer = setTimeout(() => {
-        $.get('/comedor/clientes/buscar', { q }).done(data => {
-            if (!data.length) { $('#sugClienteFiado').hide(); return; }
-            let html = '';
-            data.forEach(c => {
-                html += `<a href="#" class="list-group-item list-group-item-action py-1 px-2 sug-cli"
-                    data-id="${c.id}" data-nombre="${c.nombre}" style="font-size:.85rem;">${c.nombre}</a>`;
-            });
-            $('#sugClienteFiado').html(html).show();
-        });
-    }, 250);
-});
-
-$(document).on('click', '.sug-cli', function (e) {
-    e.preventDefault();
-    $('#inputClienteFiado').val($(this).data('nombre'));
-    $('#clienteFiadoId').val($(this).data('id'));
-    $('#sugClienteFiado').hide();
-});
-
-$(document).on('click', function (e) {
-    if (!$(e.target).closest('#inputClienteFiado, #sugClienteFiado').length) $('#sugClienteFiado').hide();
-});
-
-// Confirmar
-$('#btnOkConfirmar').on('click', function () {
-    const tipoPago   = $('.tipo-btn.active').data('tipo');
-    const clienteId  = $('#clienteFiadoId').val();
-
-    if (tipoPago === 'fiado' && !clienteId) {
-        Swal.fire('Comensal requerido', 'Para fiado debes seleccionar un comensal registrado.', 'warning');
+    if (!lista.length) {
+        $('#solicitudesWrapper').html(`
+            <div class="card shadow-sm">
+                <div class="card-body text-center text-muted py-5">
+                    <i class="fa-solid fa-circle-check fa-3x text-success mb-3"></i>
+                    <p class="mb-0">No hay solicitudes pendientes.</p>
+                </div>
+            </div>
+        `);
         return;
     }
 
-    $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+    let html = '<div class="row" id="listaSolicitudes">';
+    lista.forEach(s => {
+        const itemsHtml = (s.items || []).map(it =>
+            `<li class="text-muted"><i class="fa-solid fa-circle-dot mr-1" style="font-size:.5rem;vertical-align:middle;"></i>${escapeHtml(it)}</li>`
+        ).join('');
+        const pagoHtml = s.tipo_pago === 'fiado'
+            ? '<span class="badge badge-info"><i class="fa-solid fa-clock mr-1"></i>Fiado</span>'
+            : (`<span class="badge badge-success"><i class="fa-solid fa-money-bill-wave mr-1"></i>Contado</span>` +
+               (s.monto_recibido && parseFloat(s.monto_recibido) > parseFloat(s.total)
+                   ? `<span class="text-muted small ml-1">Paga con $${parseFloat(s.monto_recibido).toFixed(2)} · Cambio $${(parseFloat(s.monto_recibido) - parseFloat(s.total)).toFixed(2)}</span>`
+                   : '<span class="text-muted small ml-1">Pago exacto</span>'));
 
-    $.post('/comedor/pedidos/confirmar/' + solicitudActiva.id, {
-        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
-        tipo_pago:  tipoPago,
-        cliente_id: clienteId,
-    }).done(res => {
-        if (res.ok) {
-            $('#modalConfirmar').modal('hide');
-            $('#card_' + solicitudActiva.id).fadeOut(300, function () {
-                $(this).remove();
-                actualizarBadge();
+        html += `
+        <div class="col-md-6 col-lg-4 mb-3" id="card_${s.id}">
+            <div class="card border-warning shadow-sm h-100">
+                <div class="card-body py-3 px-3">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start mb-2" style="gap:6px;">
+                        <div style="min-width:0;">
+                            <div class="font-weight-bold" style="word-break:break-word;">${escapeHtml(s.cliente_nombre)}</div>
+                            <div class="text-muted small">${formatearNumeroPedido(s.numero)} · ${formatearFechaHora(s.created_at)}</div>
+                        </div>
+                        <span class="badge badge-warning text-dark flex-shrink-0">Solicitud</span>
+                    </div>
+                    <div class="mb-2">${pagoHtml}</div>
+                    ${itemsHtml ? `<ul class="list-unstyled mb-2" style="font-size:.82rem;">${itemsHtml}</ul>` : ''}
+                    ${s.notas ? `<div class="text-muted small mb-2"><i class="fa-solid fa-note-sticky mr-1"></i>${escapeHtml(s.notas)}</div>` : ''}
+                    <div class="h5 text-primary font-weight-bold mb-3">$${parseFloat(s.total).toFixed(2)}</div>
+                    <div class="d-flex" style="gap:6px;">
+                        <a href="/comedor/pedidos/ver/${s.id}" class="btn btn-sm btn-outline-secondary flex-fill">
+                            <i class="fa-solid fa-eye mr-1"></i>Ver
+                        </a>
+                        <button class="btn btn-sm btn-success flex-fill btn-confirmar"
+                            data-id="${s.id}" data-nombre="${escapeHtml(s.cliente_nombre)}">
+                            <i class="fa-solid fa-check mr-1"></i>Confirmar
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger btn-anular-sol flex-shrink-0" data-id="${s.id}">
+                            <i class="fa-solid fa-ban"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+    $('#solicitudesWrapper').html(html);
+}
+
+function cargarSolicitudesLista() {
+    $.get('/comedor/pedidos/solicitudes').done(renderListaSolicitudes);
+}
+setInterval(cargarSolicitudesLista, 15000);
+
+// Confirmar: solo acepta la solicitud y la pasa al control del comedor (NO la entrega ni
+// resuelve el pago — eso se decide hasta /comedor/entregas). Por eso no se vuelve a preguntar
+// tipo de pago ni comensal aquí: ya se definieron cuando el cliente hizo el pedido.
+$(document).on('click', '.btn-confirmar', function () {
+    const id     = $(this).data('id');
+    const nombre = $(this).data('nombre');
+    const btn    = $(this);
+
+    Swal.fire({
+        title: '¿Confirmar esta solicitud?',
+        text: `Se acepta el pedido de ${nombre} y pasa al control del comedor. El pago se resuelve hasta la entrega.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, confirmar',
+        cancelButtonText: 'Cancelar',
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+
+        $.post('/comedor/pedidos/confirmar/' + id, { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' })
+            .done(res => {
+                if (res.ok) {
+                    $('#card_' + id).fadeOut(300, function () {
+                        $(this).remove();
+                        cargarSolicitudesLista();
+                    });
+                    Swal.fire({ icon: 'success', title: '¡Confirmado!', timer: 1000, showConfirmButton: false });
+                } else {
+                    Swal.fire('Error', res.msg, 'error');
+                    btn.prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar');
+                }
+            })
+            .fail(() => {
+                Swal.fire('Error', 'No se pudo confirmar.', 'error');
+                btn.prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar');
             });
-            Swal.fire({ icon: 'success', title: '¡Confirmado!', timer: 1200, showConfirmButton: false });
-        } else {
-            Swal.fire('Error', res.msg, 'error');
-        }
-    }).always(() => {
-        $('#btnOkConfirmar').prop('disabled', false).html('<i class="fa-solid fa-check mr-1"></i>Confirmar');
     });
 });
 
@@ -270,7 +236,7 @@ $(document).on('click', '.btn-anular-sol', function () {
                 if (res.ok) {
                     $('#card_' + id).fadeOut(300, function () {
                         $(this).remove();
-                        actualizarBadge();
+                        cargarSolicitudesLista();
                     });
                 } else {
                     Swal.fire('Error', res.msg, 'error');
@@ -278,21 +244,5 @@ $(document).on('click', '.btn-anular-sol', function () {
             });
     });
 });
-
-function actualizarBadge() {
-    const restantes = $('#listaSolicitudes .col-md-6').length;
-    $('#badgeTotal').text(restantes + ' pendiente' + (restantes !== 1 ? 's' : ''));
-    if (restantes === 0) {
-        $('#listaSolicitudes').html('');
-        $('.card.shadow-sm').first().replaceWith(`
-            <div class="card shadow-sm">
-                <div class="card-body text-center text-muted py-5">
-                    <i class="fa-solid fa-circle-check fa-3x text-success mb-3"></i>
-                    <p class="mb-0">No hay solicitudes pendientes.</p>
-                </div>
-            </div>
-        `);
-    }
-}
 </script>
 <?= $this->endSection() ?>

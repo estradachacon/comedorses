@@ -27,8 +27,10 @@ class ComedorPedidoHeadModel extends Model
     public function delDia(?string $fecha = null): array
     {
         $fecha = $fecha ?? date('Y-m-d');
-        return $this->select('comedor_pedidos_head.*, users.user_name as cajero_nombre')
+        return $this->select('comedor_pedidos_head.*, users.user_name as cajero_nombre,
+                              comedor_clientes.nombre as comensal_actual_nombre')
             ->join('users', 'users.id = comedor_pedidos_head.created_by', 'left')
+            ->join('comedor_clientes', 'comedor_clientes.id = comedor_pedidos_head.cliente_id', 'left')
             ->where('fecha', $fecha)
             ->where('anulado', 0)
             ->whereNotIn('estado', ['solicitud'])

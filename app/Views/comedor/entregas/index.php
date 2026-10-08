@@ -79,6 +79,21 @@
     border-radius: 6px;
     padding: 8px 12px;
 }
+
+@media (max-width: 480px) {
+    .entrega-card.d-flex { flex-direction: column; gap: 8px; }
+    .entrega-card .text-right.ml-2 {
+        margin-left: 0 !important;
+        text-align: left;
+        width: 100%;
+    }
+    .entrega-card .text-right.ml-2 > div:last-child {
+        justify-content: flex-start !important;
+    }
+    .entrega-card .btn { flex: 1; padding: .5rem; }
+    #filaSeleccion { flex-direction: column; align-items: stretch !important; }
+    #btnConfirmarMasivo { width: 100%; }
+}
 </style>
 
 <div class="container-fluid px-3">
@@ -95,7 +110,7 @@
         <button type="button" class="tab-horario" data-servicio="almuerzo">Almuerzo</button>
     </div>
 
-    <div class="d-flex justify-content-between mb-3">
+    <div class="d-flex flex-wrap justify-content-between mb-3" style="gap:8px;">
         <div style="gap:6px;" class="d-flex">
             <button type="button" class="tab-modo active" data-modo="cliente">Por cliente</button>
             <button type="button" class="tab-modo" data-modo="item">Por item</button>
@@ -162,6 +177,16 @@
                         </label>
                     </div>
                 </div>
+                <!-- El pedido ya trae un comensal vinculado (fiado siempre requiere cuenta o alta
+                     rápida desde antes): se muestra de solo lectura, sin volver a pedirlo. -->
+                <div id="entClienteVinculado" class="form-group mb-0" style="display:none;">
+                    <label class="small font-weight-bold text-muted">COMENSAL (fiado)</label>
+                    <div class="d-flex align-items-center justify-content-between" style="background:#eef6fb;border:1px solid #bfe0f7;border-radius:8px;padding:8px 10px;">
+                        <span><i class="fa-solid fa-circle-check text-success mr-1"></i><strong id="entClienteVinculadoNombre"></strong></span>
+                        <span class="text-muted small" style="cursor:pointer;" id="btnCambiarClienteEnt">Cambiar</span>
+                    </div>
+                </div>
+                <!-- Fallback: solo si, por alguna razón, el pedido no trae comensal asociado -->
                 <div id="entClienteRow" style="display:none;position:relative;" class="form-group mb-0">
                     <label class="small font-weight-bold text-muted">COMENSAL REGISTRADO (para fiado)</label>
                     <input type="text" id="entClienteInput" class="form-control form-control-sm" placeholder="Buscar comensal...">
@@ -305,6 +330,9 @@ function cardHtml(p) {
         ? '<span class="tag tag-warning">Fiado</span>'
         : '<span class="tag tag-secondary">Contado</span>';
     const estadoTag = p.estado === 'solicitud' ? '<span class="tag tag-info">Sin confirmar</span>' : '';
+    const parcialTag = p.ya_entregado_parcial
+        ? '<span class="tag tag-success" title="Ya se le entregó algo de este pedido en otro horario">Entrega parcial</span>'
+        : '';
     const confirmarBtn = p.estado === 'solicitud'
         ? `<button type="button" class="btn btn-sm btn-outline-primary mt-1 btn-confirmar-ent" data-id="${p.id}">
                 <i class="fa-solid fa-check mr-1"></i>Confirmar
@@ -315,6 +343,10 @@ function cardHtml(p) {
         ? `<input type="checkbox" class="chk-tuani chk-solicitud" data-id="${p.id}" ${estaSeleccionado ? 'checked' : ''}>`
         : '<span style="display:inline-block;width:22px;flex-shrink:0;"></span>';
 
+    const subtotalLlamado = parseFloat(p.subtotal_llamado);
+    const totalPedido      = parseFloat(p.total);
+    const esParteDelTotal  = Math.abs(subtotalLlamado - totalPedido) > 0.009;
+
     return `
     <div class="entrega-card d-flex justify-content-between${estaSeleccionado ? ' selected' : ''}" id="entregaCard_${p.id}">
         <div class="d-flex" style="min-width:0;flex:1;gap:10px;">
@@ -322,7 +354,7 @@ function cardHtml(p) {
             <div style="min-width:0;flex:1;">
                 <div class="d-flex flex-wrap" style="gap:6px;">
                     <span class="font-weight-bold" style="font-size:.9rem;">${p.cliente_nombre}</span>
-                    ${tipoTag} ${estadoTag}
+                    ${tipoTag} ${estadoTag} ${parcialTag}
                 </div>
                 <div class="entrega-numero">${p.numero_formateado} · pedido a las ${formatFechaHora(p.created_at)}</div>
                 ${infoPagoHtml(p)}
@@ -330,7 +362,8 @@ function cardHtml(p) {
             </div>
         </div>
         <div class="text-right ml-2 flex-shrink-0">
-            <div class="font-weight-bold">$${parseFloat(p.total).toFixed(2)}</div>
+            <div class="font-weight-bold">$${subtotalLlamado.toFixed(2)}</div>
+            ${esParteDelTotal ? `<div class="text-muted" style="font-size:.7rem;">de $${totalPedido.toFixed(2)} del pedido</div>` : ''}
             <div class="mt-1" style="display:flex;gap:4px;justify-content:flex-end;">
                 ${confirmarBtn}
                 <button type="button" class="btn btn-sm btn-success btn-entregar mt-1" data-id="${p.id}">
@@ -393,6 +426,35 @@ $(document).on('click', '.btn-entregar', function () {
     pedidoActivo = datosActuales.find(p => p.id == id);
     if (!pedidoActivo) return;
 
+    // Si este pedido ya tuvo una entrega previa (items de otro horario entregados antes), el
+    // pago ya quedó resuelto en ese momento: aquí solo se confirma la entrega de lo que falta,
+    // sin volver a preguntar tipo de pago, comensal ni vuelto.
+    if (pedidoActivo.ya_entregado_parcial) {
+        const itemsTxt = pedidoActivo.items.map(it => `${parseFloat(it.cantidad)}× ${it.nombre}`).join(', ');
+        Swal.fire({
+            title: '¿Entregar estos items?',
+            text: itemsTxt,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, entregar',
+            cancelButtonText: 'Cancelar',
+        }).then(r => {
+            if (!r.isConfirmed) return;
+            $.post('/comedor/entregas/marcar/' + id, { [csrfName]: csrfHash, servicio: servicioActivo })
+                .done(res => {
+                    if (res.ok) {
+                        datosActuales = datosActuales.filter(p => p.id !== id);
+                        render();
+                        Swal.fire({ icon: 'success', title: '¡Entregado!', timer: 1000, showConfirmButton: false });
+                    } else {
+                        Swal.fire('Error', res.msg, 'error');
+                    }
+                })
+                .fail(() => Swal.fire('Error', 'No se pudo marcar la entrega.', 'error'));
+        });
+        return;
+    }
+
     $('#entCliente').text(pedidoActivo.cliente_nombre);
     $('#entNumero').text(pedidoActivo.numero_formateado);
     $('#entTotal').text('Total: $' + parseFloat(pedidoActivo.total).toFixed(2));
@@ -401,15 +463,7 @@ $(document).on('click', '.btn-entregar', function () {
     $('.tipo-ent-btn').removeClass('active');
     $('.tipo-ent-btn[data-tipo="' + (esFiado ? 'fiado' : 'contado') + '"]').addClass('active');
 
-    if (esFiado && pedidoActivo.cliente_id) {
-        $('#entClienteRow').show();
-        $('#entClienteInput').val(pedidoActivo.cliente_nombre);
-        $('#entClienteId').val(pedidoActivo.cliente_id);
-    } else {
-        $('#entClienteRow').toggle(esFiado);
-        $('#entClienteInput,#entClienteId').val('');
-    }
-
+    mostrarClienteFiadoEnt(esFiado);
     $('#entContadoRow').toggle(!esFiado);
     const montoPrevio = parseFloat(pedidoActivo.monto_recibido);
     const total = parseFloat(pedidoActivo.total);
@@ -423,9 +477,36 @@ $('.tipo-ent-btn').on('click', function () {
     $('.tipo-ent-btn').removeClass('active');
     $(this).addClass('active');
     const esFiado = $(this).data('tipo') === 'fiado';
-    $('#entClienteRow').toggle(esFiado);
+    mostrarClienteFiadoEnt(esFiado);
     $('#entContadoRow').toggle(!esFiado);
-    if (!esFiado) $('#entClienteInput,#entClienteId').val('');
+});
+
+// El comensal del pedido ya viene vinculado (fiado siempre se hace con cuenta o alta rápida
+// desde antes), así que se muestra de solo lectura. Solo se ofrece buscar/cambiar si, por
+// alguna razón, el pedido no trae comensal asociado, o si el cajero toca "Cambiar".
+function mostrarClienteFiadoEnt(esFiado) {
+    if (!esFiado) {
+        $('#entClienteVinculado, #entClienteRow').hide();
+        $('#entClienteInput, #entClienteId').val('');
+        return;
+    }
+    if (pedidoActivo && pedidoActivo.cliente_id) {
+        $('#entClienteVinculadoNombre').text(pedidoActivo.cliente_nombre);
+        $('#entClienteId').val(pedidoActivo.cliente_id);
+        $('#entClienteVinculado').show();
+        $('#entClienteRow').hide();
+    } else {
+        $('#entClienteVinculado').hide();
+        $('#entClienteRow').show();
+        $('#entClienteInput, #entClienteId').val('');
+    }
+}
+
+$('#btnCambiarClienteEnt').on('click', function () {
+    $('#entClienteVinculado').hide();
+    $('#entClienteRow').show();
+    $('#entClienteInput').val('').focus();
+    $('#entClienteId').val('');
 });
 
 // Calcula el cambio en vivo y muestra el checkbox de "vuelto pendiente" solo si hay cambio.
@@ -567,6 +648,7 @@ $('#btnConfirmarEntrega').on('click', function () {
     $(this).prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
     $.post('/comedor/entregas/marcar/' + pedidoActivo.id, {
         [csrfName]: csrfHash,
+        servicio: servicioActivo,
         tipo_pago: tipoPago, cliente_id: clienteId,
         monto_recibido: montoRecibido, vuelto_pendiente: vueltoPendiente,
     }).done(res => {

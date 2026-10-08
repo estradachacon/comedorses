@@ -76,10 +76,51 @@ class ComedorClientesController extends BaseController
     {
         $q = $this->request->getGet('q') ?? '';
         $clientes = $this->model
-            ->like('nombre', $q)
+            ->groupStart()
+                ->like('nombre', $q)
+                ->orLike('identificacion', $q)
+            ->groupEnd()
             ->where('activo', 1)
             ->orderBy('nombre')
             ->findAll(15);
         return $this->response->setJSON($clientes);
+    }
+
+    // Alta rápida de comensal desde la pantalla de "Nuevo Pedido", sin necesidad de que el
+    // comensal se loguee ni de salir a /comedor/clientes. Si el DUI ya existe, lo reutiliza.
+    public function crearRapido()
+    {
+        if (!tienePermiso('tomar_pedido_comedor')) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Sin permiso.']);
+        }
+
+        $nombre         = trim((string) $this->request->getPost('nombre'));
+        $identificacion = trim((string) $this->request->getPost('identificacion'));
+        $telefono       = trim((string) $this->request->getPost('telefono'));
+
+        if (!$nombre) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'El nombre es requerido.']);
+        }
+
+        if ($identificacion) {
+            $existente = $this->model->buscarPorIdentificacion($identificacion);
+            if ($existente) {
+                return $this->response->setJSON([
+                    'ok'         => true,
+                    'id'         => $existente['id'],
+                    'nombre'     => $existente['nombre'],
+                    'ya_existia' => true,
+                ]);
+            }
+        }
+
+        $id = $this->model->insert([
+            'nombre'         => $nombre,
+            'identificacion' => $identificacion ?: null,
+            'telefono'       => $telefono ?: null,
+            'activo'         => 1,
+        ]);
+
+        return $this->response->setJSON(['ok' => true, 'id' => $id, 'nombre' => $nombre, 'ya_existia' => false]);
     }
 }

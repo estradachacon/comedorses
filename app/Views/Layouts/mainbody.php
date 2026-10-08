@@ -617,6 +617,21 @@
             padding: 0;
         }
 
+        /* Esos 420px/360px fijos se salen de la pantalla en celular: el dropdown se alinea
+           al borde derecho del ícono (dropdown-menu-right) y es más ancho que el viewport.
+           Popper.js posiciona con "transform", no con left/top, así que hay que anularlo. */
+        @media (max-width: 480px) {
+            .notif-dropdown, .alertas-dropdown {
+                position: fixed !important;
+                transform: none !important;
+                top: 64px !important;
+                left: 10px !important;
+                right: 10px !important;
+                width: auto !important;
+                max-width: none !important;
+            }
+        }
+
         .alerta-card {
             display: flex;
             gap: 12px;

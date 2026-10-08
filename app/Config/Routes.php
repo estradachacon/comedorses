@@ -72,11 +72,13 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {    // Grupo del Da
     $routes->get('comedor/clientes/editar/(:num)', 'ComedorClientesController::editar/$1');
     $routes->post('comedor/clientes/actualizar/(:num)', 'ComedorClientesController::actualizar/$1');
     $routes->get('comedor/clientes/buscar',      'ComedorClientesController::buscar');
+    $routes->post('comedor/clientes/crear-rapido', 'ComedorClientesController::crearRapido');
     // Deudores
     $routes->get('comedor/deudores',             'ComedorDeudoresController::index');
     $routes->get('comedor/deudores/pendientes/(:num)', 'ComedorDeudoresController::pendientesCliente/$1');
     $routes->post('comedor/deudores/pagar',      'ComedorDeudoresController::registrarPago');
     $routes->post('comedor/deudores/vuelto',     'ComedorDeudoresController::entregarVuelto');
+    $routes->post('comedor/deudores/compensar',  'ComedorDeudoresController::compensar');
 
     $routes->get('comedor/entregas',             'ComedorEntregasController::index');
     $routes->get('comedor/entregas/llamar',      'ComedorEntregasController::llamar');

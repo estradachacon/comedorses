@@ -17,7 +17,7 @@ class ComedorMenuDiaModel extends Model
         $fecha = $fecha ?? date('Y-m-d');
         return $this->select('comedor_menu_dia.item_id, comedor_menu_dia.desayuno,
                               comedor_menu_dia.refrigerio, comedor_menu_dia.almuerzo,
-                              comedor_items.nombre, comedor_items.descripcion,
+                              comedor_items.nombre, comedor_items.descripcion, comedor_items.foto,
                               comedor_items.precio, comedor_categorias.nombre AS categoria_nombre')
             ->join('comedor_items',      'comedor_items.id = comedor_menu_dia.item_id')
             ->join('comedor_categorias', 'comedor_categorias.id = comedor_items.categoria_id', 'left')

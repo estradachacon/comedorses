@@ -81,9 +81,11 @@ function itemDisponibleAhoraComedor(array $item, ?string $horaActual = null): bo
     return count(serviciosAbiertosComedor($item, $horaActual)) > 0;
 }
 
-// Cuando un item tiene exactamente 2 servicios asignados (no "todo el día", no uno solo),
-// hay que preguntarle al cliente para cuál horario lo quiere, para que la cocina sepa cuándo subirlo.
+// Cuando un item tiene 2 o 3 servicios asignados (incluye "todo el día"), hay que preguntarle
+// al cliente para cuál horario lo quiere, para que la cocina sepa cuándo subirlo. Con un solo
+// servicio asignado no hace falta preguntar: ya se sabe para cuándo es.
 function requiereElegirHorarioComedor(array $item): bool
 {
-    return count(serviciosAsignadosComedor($item)) === 2;
+    $cantidad = count(serviciosAsignadosComedor($item));
+    return $cantidad === 2 || $cantidad === 3;
 }

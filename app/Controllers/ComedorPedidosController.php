@@ -28,9 +28,10 @@ class ComedorPedidosController extends BaseController
         $this->menuDiaModel = new ComedorMenuDiaModel();
     }
 
-    // Horario de un item tomado directamente en el POS: automático si tiene un solo
-    // horario asignado hoy; sin restricción (NULL) si tiene 0, 2 (ambiguo) o 3 (todo el día).
-    private function servicioParaItemPos(?int $itemId, string $fecha): ?string
+    // Horario de un item tomado directamente en el POS: si tiene 2 o 3 horarios asignados hoy,
+    // se respeta lo que el cajero eligió en pantalla (si es válido); con un solo horario
+    // asignado es automático; sin menú de hoy o sin horarios asignados, sin restricción (NULL).
+    private function servicioParaItemPos(?int $itemId, string $fecha, ?string $solicitado = null): ?string
     {
         if (!$itemId) {
             return null;
@@ -40,6 +41,9 @@ class ComedorPedidosController extends BaseController
             return null;
         }
         $asignados = serviciosAsignadosComedor($menuDia);
+        if ($solicitado && in_array($solicitado, $asignados, true)) {
+            return $solicitado;
+        }
         return count($asignados) === 1 ? $asignados[0] : null;
     }
 
@@ -63,6 +67,17 @@ class ComedorPedidosController extends BaseController
         }
         $items = $this->itemModel->disponibles();
 
+        // El POS vende de todo el catálogo (no solo lo publicado en el menú de hoy), pero si un
+        // item SÍ está en el menú de hoy con 2 o 3 horarios asignados, igual hay que preguntarle
+        // al cajero para cuál horario es, igual que en el menú público.
+        $menuHoy = array_column($this->menuDiaModel->where('fecha', date('Y-m-d'))->findAll(), null, 'item_id');
+        foreach ($items as &$item) {
+            $menuDia = $menuHoy[$item['id']] ?? ['desayuno' => 0, 'refrigerio' => 0, 'almuerzo' => 0];
+            $item['requiere_horario']    = requiereElegirHorarioComedor($menuDia);
+            $item['servicios_asignados'] = serviciosAsignadosComedor($menuDia);
+        }
+        unset($item);
+
         // Agrupar por categoría para mostrar en el POS
         $porCategoria = [];
         foreach ($items as $item) {
@@ -85,12 +100,16 @@ class ComedorPedidosController extends BaseController
         $db->transBegin();
 
         try {
-            $itemsJson     = $this->request->getPost('items_json');
-            $items         = json_decode($itemsJson, true);
-            $tipoPago      = $this->request->getPost('tipo_pago');
-            $clienteId     = (int)($this->request->getPost('cliente_id')) ?: null;
-            $clienteNombre = trim($this->request->getPost('cliente_nombre'));
-            $notas         = $this->request->getPost('notas');
+            $itemsJson         = $this->request->getPost('items_json');
+            $items             = json_decode($itemsJson, true);
+            $tipoPago          = $this->request->getPost('tipo_pago');
+            $clienteId         = (int)($this->request->getPost('cliente_id')) ?: null;
+            $clienteNombre     = trim($this->request->getPost('cliente_nombre'));
+            $notas             = $this->request->getPost('notas');
+            $montoRecibidoPost = $this->request->getPost('monto_recibido');
+            $montoRecibido     = ($montoRecibidoPost !== null && $montoRecibidoPost !== '') ? (float) $montoRecibidoPost : null;
+            $vueltoPendiente   = (bool) $this->request->getPost('vuelto_pendiente');
+            $entregarAhora     = (bool) $this->request->getPost('entregar_ahora');
 
             if (empty($items)) {
                 throw new \Exception('No hay items en el pedido.');
@@ -99,7 +118,12 @@ class ComedorPedidosController extends BaseController
                 throw new \Exception('El nombre del cliente es requerido.');
             }
 
-            $total       = array_sum(array_column($items, 'subtotal'));
+            $total = array_sum(array_column($items, 'subtotal'));
+
+            if ($tipoPago === 'contado' && $montoRecibido !== null && $montoRecibido < $total) {
+                throw new \Exception('El monto con el que paga no puede ser menor al total.');
+            }
+
             $estado      = ($tipoPago === 'contado') ? 'pagado' : 'pendiente';
             $montoPagado = ($tipoPago === 'contado') ? $total : 0.0;
             $saldo       = $total - $montoPagado;
@@ -116,6 +140,9 @@ class ComedorPedidosController extends BaseController
                 'tipo_pago'      => $tipoPago,
                 'estado'         => $estado,
                 'notas'          => $notas,
+                'monto_recibido' => $tipoPago === 'contado' ? $montoRecibido : null,
+                'entregado_at'   => $entregarAhora ? date('Y-m-d H:i:s') : null,
+                'entregado_por'  => $entregarAhora ? session()->get('id') : null,
                 'created_by'     => session()->get('id'),
             ]);
 
@@ -124,7 +151,7 @@ class ComedorPedidosController extends BaseController
                     'pedido_id'       => $pedidoId,
                     'item_id'         => $item['item_id'] ?? null,
                     'item_nombre'     => $item['nombre'],
-                    'servicio'        => $this->servicioParaItemPos($item['item_id'] ?? null, date('Y-m-d')),
+                    'servicio'        => $this->servicioParaItemPos($item['item_id'] ?? null, date('Y-m-d'), $item['servicio'] ?? null),
                     'precio_unitario' => $item['precio'],
                     'cantidad'        => $item['cantidad'],
                     'subtotal'        => $item['subtotal'],
@@ -139,6 +166,16 @@ class ComedorPedidosController extends BaseController
                     'notas'      => 'Pago contado',
                     'created_by' => session()->get('id'),
                 ]);
+
+                // Si el cajero marcó que no tenía el vuelto a mano, ese monto queda pendiente de
+                // darle al cliente, visible y liquidable desde /comedor/deudores.
+                if ($vueltoPendiente && $montoRecibido !== null && $montoRecibido > $total && $clienteId) {
+                    $vuelto = round($montoRecibido - $total, 2);
+                    $db->table('comedor_clientes')
+                        ->where('id', $clienteId)
+                        ->set('vuelto_pendiente', "vuelto_pendiente + {$vuelto}", false)
+                        ->update();
+                }
             }
 
             // Si es fiado y hay cliente registrado, acumular saldo
@@ -171,6 +208,18 @@ class ComedorPedidosController extends BaseController
         $data['detalles'] = $this->detalleModel->delPedido($id);
         $data['pagos']    = $this->pagoModel->delPedido($id);
         $data['title']    = formatearNumeroPedido($data['pedido']['numero']);
+
+        // Si el pedido se tomó a nombre de alguien pero, al momento de confirmar/entregar, el
+        // cajero vinculó la cuenta a OTRO comensal (p. ej. para registrarle la deuda a él en vez
+        // de a quien pidió), mostrarlo explícitamente en vez de dejarlo solo implícito en cliente_id.
+        $data['comensalActual'] = null;
+        if ($data['pedido']['cliente_id']) {
+            $comensal = $this->clienteModel->find($data['pedido']['cliente_id']);
+            if ($comensal && mb_strtolower(trim($comensal['nombre'])) !== mb_strtolower(trim($data['pedido']['cliente_nombre']))) {
+                $data['comensalActual'] = $comensal;
+            }
+        }
+
         return view('comedor/pedidos/ver', $data);
     }
 

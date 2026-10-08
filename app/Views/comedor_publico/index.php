@@ -26,11 +26,66 @@
 .item-card.item-disabled { opacity: .55; }
 .item-card.item-disabled .item-name { text-decoration: line-through; }
 
-.qty-slot { position: relative; width: 94px; height: 32px; }
+.item-thumb-img {
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    object-fit: cover;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: 1px solid #eee;
+}
+.item-thumb-img:active { transform: scale(.94); }
+
+.horario-swal-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.horario-swal-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    padding: 13px 16px;
+    background: var(--hbg, #f4f6f9);
+    cursor: pointer;
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--hcolor, #333);
+    transition: transform .12s ease, border-color .12s ease;
+    text-align: left;
+}
+.horario-swal-btn:hover, .horario-swal-btn:active { border-color: var(--hcolor, #333); transform: translateY(-1px) scale(.99); }
+.horario-swal-btn i {
+    font-size: 1.4rem;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    color: var(--hcolor, #333);
+    flex-shrink: 0;
+}
+.horario-swal-btn span { display: block; }
+.horario-swal-btn .horario-swal-sub { font-size: .72rem; font-weight: 500; color: #888; margin-top: 1px; }
+
+.badge-horario-hist {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background: var(--hbg, #eef2f5);
+    color: var(--hcolor, #495057);
+}
+
+.qty-slot { position: relative; width: 108px; height: 36px; }
 .qty-slot .add-btn {
     position: absolute;
     top: 0; right: 0;
-    width: 32px; height: 32px;
+    width: 36px; height: 36px;
     transition: opacity .18s ease, transform .18s ease;
 }
 .qty-slot .add-btn.hide {
@@ -44,7 +99,7 @@
     margin-top: 0;
     display: flex;
     align-items: center;
-    height: 32px;
+    height: 36px;
     opacity: 0;
     transform: scale(.4);
     pointer-events: none;
@@ -61,7 +116,7 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 64px;
+    bottom: var(--cart-bar-height, 64px);
     background: #fff;
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -4px 20px rgba(0,0,0,.15);
@@ -82,7 +137,16 @@
     border-bottom: 1px solid #eee;
     margin-bottom: 4px;
 }
-.cart-drawer-close { background: none; border: none; font-size: 1.5rem; line-height: 1; color: #aaa; padding: 0; }
+.cart-drawer-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #aaa;
+    padding: 10px;
+    margin: -10px;
+}
+.cart-drawer-close:active { transform: scale(.9); }
 .cart-drawer-row {
     display: flex;
     align-items: center;
@@ -121,7 +185,16 @@
     top: 0;
     z-index: 2;
 }
-.historial-header button { background: none; border: none; color: #fff; font-size: 1.2rem; padding: 0; }
+.historial-header button {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.2rem;
+    padding: 10px;
+    margin: -10px;
+    border-radius: 50%;
+}
+.historial-header button:active { background: rgba(255,255,255,.15); }
 .historial-resumen { display: flex; gap: 10px; padding: 14px 16px 0; }
 .historial-stat {
     flex: 1;
@@ -141,6 +214,20 @@
     box-shadow: 0 1px 4px rgba(0,0,0,.06);
 }
 .historial-pedido-numero { font-size: .75rem; color: #888; font-family: monospace; }
+
+.ptr-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 0;
+    overflow: hidden;
+    color: #888;
+    font-size: .78rem;
+    font-weight: 700;
+}
+.ptr-indicator i { transition: transform .2s ease; }
+.ptr-indicator.armed i { transform: rotate(180deg); }
 
 /* ── Botones con más vida: sombra, levantamiento al pasar el mouse, click con "resorte" ── */
 .btn { transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease; }
@@ -191,16 +278,86 @@
 #btnMiHistorial:hover { background: var(--primary); color: #fff; transform: translateY(-1px); }
 
 #btnPedidoAtras { border-radius: 14px; }
+
+/* En pantallas muy angostas, el botón de historial se queda solo con el ícono para no apretar
+   el nombre del cliente ni el link de cerrar sesión. */
+@media (max-width: 380px) {
+    .historial-btn-text { display: none; }
+    #btnMiHistorial { padding-left: .55rem; padding-right: .55rem; }
+}
+
+/* Bootstrap aplica "display:flex !important" via .d-flex, así que un simple
+   display:none en línea (PHP o jQuery .hide()) nunca gana. Esta clase propia,
+   cargada después del CSS de Bootstrap, sí tiene la última palabra. */
+.cuenta-bar-oculta { display: none !important; }
 </style>
 
-<?php if ($clienteSesion): ?>
-<div class="d-flex justify-content-between align-items-center px-3 py-2" style="background:#fff;border-bottom:1px solid #e9ecef;font-size:.8rem;">
-    <span><i class="fa-solid fa-circle-user mr-1 text-primary"></i>Hola, <strong><?= esc($clienteSesion['nombre']) ?></strong></span>
-    <div class="d-flex align-items-center" style="gap:12px;">
+<!-- Barra de cuenta: logueado -->
+<div id="barraCuentaSesion" class="d-flex justify-content-between align-items-center px-3 py-2<?= $clienteSesion ? '' : ' cuenta-bar-oculta' ?>"
+     style="background:#fff;border-bottom:1px solid #e9ecef;font-size:.8rem;gap:10px;">
+    <span style="min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+        <i class="fa-solid fa-circle-user mr-1 text-primary"></i>Hola, <strong id="nombreClienteBar"><?= esc($clienteSesion['nombre'] ?? '') ?></strong>
+    </span>
+    <div class="d-flex align-items-center flex-shrink-0" style="gap:12px;">
         <button type="button" id="btnMiHistorial" class="btn btn-sm btn-outline-primary py-1">
-            <i class="fa-solid fa-receipt mr-1"></i>Mi historial
+            <i class="fa-solid fa-receipt" style="margin-right:4px;"></i><span class="historial-btn-text">Mi historial</span>
         </button>
         <a href="#" id="btnLogoutCliente" class="text-danger">Cerrar sesión</a>
+    </div>
+</div>
+
+<!-- Barra de cuenta: sin sesión -->
+<div id="barraCuentaAnonimo" class="d-flex justify-content-between align-items-center px-3 py-2<?= $clienteSesion ? ' cuenta-bar-oculta' : '' ?>"
+     style="background:#fff;border-bottom:1px solid #e9ecef;font-size:.8rem;gap:10px;">
+    <span class="text-muted">¿Ya tienes cuenta?</span>
+    <button type="button" id="btnAbrirCuentaStandalone" class="btn btn-sm btn-outline-primary py-1">
+        <i class="fa-solid fa-right-to-bracket mr-1"></i>Iniciar sesión
+    </button>
+</div>
+
+<!-- Modal: cuenta independiente (sin necesidad de estar armando un pedido) -->
+<div class="modal fade" id="modalCuenta" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="border-radius:18px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title font-weight-bold">Mi cuenta</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="btn-group btn-group-sm w-100 mb-3" role="group">
+                    <button type="button" class="btn btn-outline-primary cuenta-standalone-tab active" data-tab="login">Iniciar sesión</button>
+                    <button type="button" class="btn btn-outline-primary cuenta-standalone-tab" data-tab="registro">Crear cuenta</button>
+                </div>
+                <div id="tabLoginStandalone">
+                    <div class="form-group">
+                        <input type="text" id="loginDuiStandalone" class="form-control" placeholder="DUI">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="loginPasswordStandalone" class="form-control" placeholder="Contraseña">
+                    </div>
+                    <button type="button" class="btn btn-primary btn-block" id="btnLoginStandalone">
+                        <i class="fa-solid fa-right-to-bracket mr-1"></i>Iniciar sesión
+                    </button>
+                </div>
+                <div id="tabRegistroStandalone" style="display:none;">
+                    <div class="form-group">
+                        <input type="text" id="regNombreStandalone" class="form-control" placeholder="Nombre completo">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="regDuiStandalone" class="form-control" placeholder="DUI">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="regTelefonoStandalone" class="form-control" placeholder="Teléfono (opcional)">
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="regPasswordStandalone" class="form-control" placeholder="Contraseña">
+                    </div>
+                    <button type="button" class="btn btn-primary btn-block" id="btnRegistrarStandalone">
+                        <i class="fa-solid fa-user-plus mr-1"></i>Crear cuenta
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -213,10 +370,12 @@
             <div style="font-size:.72rem;opacity:.85;" id="histNombre"></div>
         </div>
     </div>
+    <div class="ptr-indicator" id="ptrIndicator">
+        <i class="fa-solid fa-arrow-down" id="ptrIcon"></i><span id="ptrText">Jala para actualizar</span>
+    </div>
     <div class="historial-resumen" id="historialResumen"></div>
-    <div id="historialLista" class="pb-4"></div>
+    <div id="historialLista" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));"></div>
 </div>
-<?php endif; ?>
 
 <!-- Pills de categorías -->
 <div class="cat-pills" id="catPills">
@@ -239,13 +398,18 @@
             $disponibleAhora = $item['disponible_ahora'];
             $horarios        = horariosServicioComedor();
         ?>
+        <?php $fotoUrl = !empty($item['foto']) ? base_url('upload/comedor_items/' . $item['foto']) : null; ?>
         <div class="item-card<?= $disponibleAhora ? '' : ' item-disabled' ?>" data-id="<?= $item['item_id'] ?>"
              data-nombre="<?= esc($item['nombre'], 'attr') ?>"
              data-precio="<?= $item['precio'] ?>"
              data-requiere-horario="<?= $item['requiere_horario'] ? 1 : 0 ?>"
              data-servicios-abiertos="<?= esc(implode(',', $abiertos), 'attr') ?>">
 
+            <?php if ($fotoUrl): ?>
+            <img src="<?= esc($fotoUrl) ?>" class="item-thumb-img btn-ver-foto" alt="<?= esc($item['nombre'], 'attr') ?>" data-foto="<?= esc($fotoUrl, 'attr') ?>">
+            <?php else: ?>
             <div class="item-emoji">🍽️</div>
+            <?php endif; ?>
 
             <div class="item-info">
                 <div class="item-name"><?= esc($item['nombre']) ?></div>
@@ -303,9 +467,11 @@
 
 <!-- Barra flotante del carrito -->
 <div class="cart-bar" id="cartBar">
+    <div class="cart-bar-grabber"></div>
     <div class="cart-bar-left" id="cartBarLeft">
         <div class="cart-bar-count" id="cartCount">0 items</div>
         <div class="cart-bar-total" id="cartTotal">$0.00</div>
+        <div class="cart-bar-hint"><i class="fa-solid fa-chevron-up"></i>Deslízame o toca para ver tu pedido</div>
     </div>
     <button class="cart-bar-btn" id="btnPedir">
         <i class="fa-solid fa-paper-plane mr-1"></i> Solicitar
@@ -404,6 +570,16 @@
     </div>
 </div>
 
+<!-- Modal: ver foto del item en grande -->
+<div class="modal fade" id="modalFotoItem" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="border-radius:18px;background:transparent;box-shadow:none;">
+            <button type="button" class="close text-white" data-dismiss="modal" style="position:absolute;top:-36px;right:0;font-size:1.8rem;opacity:.9;text-shadow:0 1px 4px rgba(0,0,0,.5);">&times;</button>
+            <img id="imgFotoItemGrande" src="" alt="" style="width:100%;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.4);">
+        </div>
+    </div>
+</div>
+
 <!-- Modal: confirmación exitosa -->
 <div class="modal fade" id="modalExito" tabindex="-1" data-backdrop="static" data-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
@@ -433,6 +609,14 @@ let tipoPagoActivo = null;
 
 function formatMoney(v) { return '$' + parseFloat(v).toFixed(2); }
 
+// La barra inferior cambió de alto varias veces (padding, línea de "deslízame") y el carrito
+// flotante se posiciona "bottom: altura de la barra" para quedar justo encima de ella sin que
+// la barra lo tape. En vez de adivinar un valor fijo en CSS, se mide el alto real de la barra.
+function ajustarAlturaCarritoBar() {
+    const alto = document.getElementById('cartBar').offsetHeight;
+    document.documentElement.style.setProperty('--cart-bar-height', alto + 'px');
+}
+
 function renderCartBar() {
     const keys = Object.keys(cart);
     const total = keys.reduce((s, id) => s + cart[id].precio * cart[id].cantidad, 0);
@@ -446,7 +630,11 @@ function renderCartBar() {
         $('#cartCount').text(count + (count === 1 ? ' item' : ' items'));
         $('#cartTotal').text(formatMoney(total));
     }
+    ajustarAlturaCarritoBar();
 }
+
+$(window).on('resize orientationchange', ajustarAlturaCarritoBar);
+ajustarAlturaCarritoBar();
 
 function renderCartDrawer() {
     const keys = Object.keys(cart);
@@ -482,6 +670,43 @@ function syncUI() {
 function etiquetaHorario(s) {
     const map = { desayuno: 'Desayuno', refrigerio: 'Refrigerio', almuerzo: 'Almuerzo' };
     return map[s] || s;
+}
+
+const HORARIO_META = {
+    desayuno:   { icon: 'fa-mug-hot',     label: 'Desayuno',   sub: 'Por la mañana',  bg: '#fff4e0', color: '#c97a0a' },
+    refrigerio: { icon: 'fa-cookie-bite', label: 'Refrigerio', sub: 'A media mañana', bg: '#e9f1fb', color: '#1c5a96' },
+    almuerzo:   { icon: 'fa-utensils',    label: 'Almuerzo',   sub: 'Al mediodía',    bg: '#eaf7ec', color: '#237a3f' },
+};
+
+// Selector de horario con tarjetas grandes (en vez del radio escueto de SweetAlert) para que
+// el comensal elija de un vistazo para cuándo quiere el item.
+function elegirHorarioComedor(abiertos) {
+    return new Promise(resolve => {
+        const html = '<div class="horario-swal-grid">' + abiertos.map(s => {
+            const m = HORARIO_META[s] || { icon: 'fa-clock', label: etiquetaHorario(s), sub: '', bg: '#f4f6f9', color: '#333' };
+            return `<button type="button" class="horario-swal-btn" data-value="${s}" style="--hbg:${m.bg};--hcolor:${m.color};">
+                <i class="fa-solid ${m.icon}"></i>
+                <span><span class="d-block">${m.label}</span>${m.sub ? `<span class="horario-swal-sub">${m.sub}</span>` : ''}</span>
+            </button>`;
+        }).join('') + '</div>';
+
+        let elegido = null;
+        Swal.fire({
+            title: '¿Para cuándo lo quieres?',
+            html,
+            showConfirmButton: false,
+            showCancelButton: true,
+            cancelButtonText: 'Cancelar',
+            didOpen: () => {
+                document.querySelectorAll('.horario-swal-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        elegido = btn.dataset.value;
+                        Swal.close();
+                    });
+                });
+            },
+        }).then(() => resolve(elegido));
+    });
 }
 
 function quitarDelCarrito(id) {
@@ -521,20 +746,8 @@ $(document).on('click', '.btn-agregar', function (e) {
 
     // Item disponible en más de un horario a la vez: preguntar para cuál lo quiere
     if (requiereHorario && abiertos.length > 1) {
-        const opciones = {};
-        abiertos.forEach(s => { opciones[s] = etiquetaHorario(s); });
-        Swal.fire({
-            title: '¿Para qué horario lo deseas?',
-            input: 'radio',
-            inputOptions: opciones,
-            inputValidator: (value) => (value ? undefined : 'Elige un horario'),
-            confirmButtonText: 'Agregar',
-            showCancelButton: true,
-            cancelButtonText: 'Cancelar',
-        }).then(result => {
-            if (result.isConfirmed && result.value) {
-                agregarAlCarrito(card, btn, result.value);
-            }
+        elegirHorarioComedor(abiertos).then(valor => {
+            if (valor) agregarAlCarrito(card, btn, valor);
         });
         return;
     }
@@ -590,6 +803,37 @@ $('#cartBarLeft').on('click', function () {
 });
 $('#btnCerrarCarrito').on('click', function () {
     $('#cartDrawer').removeClass('open');
+});
+
+// Deslizar hacia arriba la barra inferior abre el carrito; deslizar hacia abajo el
+// encabezado del carrito lo cierra (gesto, además del tap/clic ya soportado).
+(function () {
+    const barra = document.getElementById('cartBar');
+    let inicioBarra = null;
+    barra.addEventListener('touchstart', function (e) { inicioBarra = e.touches[0].clientY; }, { passive: true });
+    barra.addEventListener('touchend', function (e) {
+        if (inicioBarra === null) return;
+        const dy = e.changedTouches[0].clientY - inicioBarra;
+        inicioBarra = null;
+        if (dy < -20 && Object.keys(cart).length) $('#cartDrawer').addClass('open');
+    }, { passive: true });
+
+    const encabezadoCarrito = document.querySelector('.cart-drawer-header');
+    let inicioCarrito = null;
+    encabezadoCarrito.addEventListener('touchstart', function (e) { inicioCarrito = e.touches[0].clientY; }, { passive: true });
+    encabezadoCarrito.addEventListener('touchend', function (e) {
+        if (inicioCarrito === null) return;
+        const dy = e.changedTouches[0].clientY - inicioCarrito;
+        inicioCarrito = null;
+        if (dy > 20) $('#cartDrawer').removeClass('open');
+    }, { passive: true });
+})();
+
+// Ver foto del item en grande (sin que el tap active el agregar al carrito de la card)
+$(document).on('click', '.btn-ver-foto', function (e) {
+    e.stopPropagation();
+    $('#imgFotoItemGrande').attr('src', $(this).data('foto'));
+    $('#modalFotoItem').modal('show');
 });
 
 // Filtro por categoría
@@ -709,9 +953,38 @@ $('.cuenta-tab').on('click', function () {
     $('#tabRegistro').toggle(tab === 'registro');
 });
 
-// Después de iniciar sesión o crear cuenta, continúa en el paso que corresponda según lo elegido en STEP 1.
-function cuentaLista(nombre) {
+// ── Login/registro: funciones compartidas por el modal de pedido y el standalone ──
+function intentarLogin(identificacion, password) {
+    return $.post('<?= base_url('menu/cuenta/login') ?>', {
+        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        identificacion, password,
+    });
+}
+function intentarRegistro(nombre, identificacion, telefono, password) {
+    return $.post('<?= base_url('menu/cuenta/registrar') ?>', {
+        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        nombre, identificacion, telefono, password,
+    });
+}
+
+// Enciende/apaga la barra de cuenta en vivo, sin recargar la página.
+function marcarSesionActiva(nombre) {
     clienteSesion = { nombre: nombre };
+    $('#nombreClienteBar').text(nombre);
+    $('#barraCuentaSesion').removeClass('cuenta-bar-oculta');
+    $('#barraCuentaAnonimo').addClass('cuenta-bar-oculta');
+}
+function marcarSesionCerrada() {
+    clienteSesion = null;
+    $('#barraCuentaSesion').addClass('cuenta-bar-oculta');
+    $('#barraCuentaAnonimo').removeClass('cuenta-bar-oculta');
+    $('#panelHistorial').removeClass('open');
+}
+
+// Después de iniciar sesión o crear cuenta DENTRO de un pedido, continúa en el paso
+// que corresponda según lo elegido en STEP 1 (y ya deja la barra de arriba actualizada).
+function cuentaLista(nombre) {
+    marcarSesionActiva(nombre);
     $('#stepCuenta').hide();
     if (tipoPagoActivo === 'fiado') {
         $('#fiadoLogNombre').text(nombre);
@@ -725,7 +998,7 @@ function cuentaLista(nombre) {
     $('#btnEnviarPedido').show();
 }
 
-// Login de cliente
+// Login/registro dentro del flujo de pedido
 $('#btnLoginCliente').on('click', function () {
     const identificacion = $('#loginDui').val().trim();
     const password = $('#loginPassword').val();
@@ -734,10 +1007,7 @@ $('#btnLoginCliente').on('click', function () {
         return;
     }
     $(this).prop('disabled', true);
-    $.post('<?= base_url('menu/cuenta/login') ?>', {
-        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
-        identificacion, password,
-    }).done(function (r) {
+    intentarLogin(identificacion, password).done(function (r) {
         if (r.ok) {
             cuentaLista(r.nombre);
         } else {
@@ -750,7 +1020,6 @@ $('#btnLoginCliente').on('click', function () {
     });
 });
 
-// Registro de cliente
 $('#btnRegistrarCliente').on('click', function () {
     const nombre = $('#regNombre').val().trim();
     const identificacion = $('#regDui').val().trim();
@@ -761,10 +1030,7 @@ $('#btnRegistrarCliente').on('click', function () {
         return;
     }
     $(this).prop('disabled', true);
-    $.post('<?= base_url('menu/cuenta/registrar') ?>', {
-        '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
-        nombre, identificacion, telefono, password,
-    }).done(function (r) {
+    intentarRegistro(nombre, identificacion, telefono, password).done(function (r) {
         if (r.ok) {
             cuentaLista(r.nombre);
         } else {
@@ -777,11 +1043,77 @@ $('#btnRegistrarCliente').on('click', function () {
     });
 });
 
-// Cerrar sesión de cliente
+// ── Cuenta independiente (sin necesidad de estar armando un pedido) ──
+$('#btnAbrirCuentaStandalone').on('click', function () {
+    $('#loginDuiStandalone, #loginPasswordStandalone, #regNombreStandalone, #regDuiStandalone, #regTelefonoStandalone, #regPasswordStandalone').val('');
+    $('.cuenta-standalone-tab').removeClass('active');
+    $('.cuenta-standalone-tab[data-tab="login"]').addClass('active');
+    $('#tabLoginStandalone').show();
+    $('#tabRegistroStandalone').hide();
+    $('#modalCuenta').modal('show');
+});
+
+$('.cuenta-standalone-tab').on('click', function () {
+    $('.cuenta-standalone-tab').removeClass('active');
+    $(this).addClass('active');
+    const tab = $(this).data('tab');
+    $('#tabLoginStandalone').toggle(tab === 'login');
+    $('#tabRegistroStandalone').toggle(tab === 'registro');
+});
+
+$('#btnLoginStandalone').on('click', function () {
+    const identificacion = $('#loginDuiStandalone').val().trim();
+    const password = $('#loginPasswordStandalone').val();
+    if (!identificacion || !password) {
+        Swal.fire('Datos requeridos', 'Ingresa tu DUI y contraseña.', 'warning');
+        return;
+    }
+    $(this).prop('disabled', true);
+    intentarLogin(identificacion, password).done(function (r) {
+        if (r.ok) {
+            marcarSesionActiva(r.nombre);
+            $('#modalCuenta').modal('hide');
+            Swal.fire({ icon: 'success', title: '¡Bienvenido, ' + r.nombre + '!', timer: 1200, showConfirmButton: false });
+        } else {
+            Swal.fire('Error', r.msg, 'error');
+        }
+    }).fail(function () {
+        Swal.fire('Error', 'No se pudo iniciar sesión.', 'error');
+    }).always(function () {
+        $('#btnLoginStandalone').prop('disabled', false);
+    });
+});
+
+$('#btnRegistrarStandalone').on('click', function () {
+    const nombre = $('#regNombreStandalone').val().trim();
+    const identificacion = $('#regDuiStandalone').val().trim();
+    const telefono = $('#regTelefonoStandalone').val().trim();
+    const password = $('#regPasswordStandalone').val();
+    if (!nombre || !identificacion || !password) {
+        Swal.fire('Datos requeridos', 'Nombre, DUI y contraseña son obligatorios.', 'warning');
+        return;
+    }
+    $(this).prop('disabled', true);
+    intentarRegistro(nombre, identificacion, telefono, password).done(function (r) {
+        if (r.ok) {
+            marcarSesionActiva(r.nombre);
+            $('#modalCuenta').modal('hide');
+            Swal.fire({ icon: 'success', title: '¡Cuenta creada, bienvenido!', timer: 1200, showConfirmButton: false });
+        } else {
+            Swal.fire('Error', r.msg, 'error');
+        }
+    }).fail(function () {
+        Swal.fire('Error', 'No se pudo crear la cuenta.', 'error');
+    }).always(function () {
+        $('#btnRegistrarStandalone').prop('disabled', false);
+    });
+});
+
+// Cerrar sesión de cliente (sin recargar la página)
 $('#btnLogoutCliente').on('click', function (e) {
     e.preventDefault();
     $.post('<?= base_url('menu/cuenta/logout') ?>', { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' })
-        .always(function () { location.reload(); });
+        .always(function () { marcarSesionCerrada(); });
 });
 
 // Mi historial: vista paralela que se desliza desde la derecha
@@ -842,7 +1174,7 @@ function cargarHistorial() {
     $('#historialResumen').html('');
     $('#historialLista').html('<div class="text-center py-5"><i class="fa-solid fa-spinner fa-spin"></i></div>');
 
-    $.get('<?= base_url('menu/historial') ?>').done(function (r) {
+    return $.get('<?= base_url('menu/historial') ?>').done(function (r) {
         if (!r.ok) {
             $('#historialLista').html('<p class="text-center text-muted py-4">' + r.msg + '</p>');
             return;
@@ -878,8 +1210,18 @@ function cargarHistorial() {
 
         let html = '';
         r.pedidos.forEach(p => {
-            const itemsTxt = (p.items || []).join(', ');
+            const itemsTxt = (p.items || []).map(it => it.texto).join(', ');
             const estado = estadoAmigablePedido(p);
+
+            // Badge(s) del tiempo (desayuno/refrigerio/almuerzo) al que corresponde el pedido.
+            // Un mismo pedido puede tener items de más de un horario, así que se muestra uno
+            // por cada horario distinto presente (sin repetir, y sin badge para items "todo el día").
+            const serviciosEnPedido = [...new Set((p.items || []).map(it => it.servicio).filter(Boolean))];
+            const horariosHtml = serviciosEnPedido.map(s => {
+                const m = HORARIO_META[s];
+                return m ? `<span class="badge-horario-hist" style="--hbg:${m.bg};--hcolor:${m.color};"><i class="fa-solid ${m.icon}"></i>${m.label}</span>` : '';
+            }).join('');
+
             html += `
             <div class="historial-pedido">
                 <div class="d-flex justify-content-between align-items-start">
@@ -890,12 +1232,64 @@ function cargarHistorial() {
                     <span class="badge badge-${estado.clase}">${estado.texto}</span>
                 </div>
                 <div class="text-muted small mt-1">${itemsTxt}</div>
+                ${horariosHtml ? `<div class="mt-1" style="display:flex;gap:4px;flex-wrap:wrap;">${horariosHtml}</div>` : ''}
                 ${estado.nota ? `<div class="small font-weight-bold mt-1 text-${estado.notaClase}">${estado.nota}</div>` : ''}
             </div>`;
         });
         $('#historialLista').html(html);
     });
 }
+
+// Pull-to-refresh: jalar el panel de historial hacia abajo desde arriba del todo recarga.
+(function () {
+    const panel = document.getElementById('panelHistorial');
+    const indicador = document.getElementById('ptrIndicator');
+    const icono = document.getElementById('ptrIcon');
+    const texto = document.getElementById('ptrText');
+    const UMBRAL = 70;
+    let startY = 0, jalando = false, armado = false, cargando = false;
+
+    panel.addEventListener('touchstart', function (e) {
+        jalando = panel.scrollTop <= 0 && !cargando;
+        armado = false;
+        if (jalando) startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', function (e) {
+        if (!jalando) return;
+        const dy = e.touches[0].clientY - startY;
+        if (dy <= 0) { indicador.style.height = '0px'; return; }
+        const altura = Math.min(dy * 0.5, UMBRAL);
+        indicador.style.height = altura + 'px';
+        const ahoraArmado = altura >= UMBRAL - 5;
+        if (ahoraArmado !== armado) {
+            armado = ahoraArmado;
+            indicador.classList.toggle('armed', armado);
+            texto.textContent = armado ? 'Suelta para actualizar' : 'Jala para actualizar';
+        }
+    }, { passive: true });
+
+    panel.addEventListener('touchend', function () {
+        if (!jalando) return;
+        jalando = false;
+        if (armado && !cargando) {
+            cargando = true;
+            texto.textContent = 'Actualizando...';
+            icono.className = 'fa-solid fa-spinner fa-spin';
+            cargarHistorial().always(function () {
+                indicador.style.height = '0px';
+                indicador.classList.remove('armed');
+                icono.className = 'fa-solid fa-arrow-down';
+                texto.textContent = 'Jala para actualizar';
+                cargando = false;
+            });
+        } else {
+            indicador.style.height = '0px';
+            indicador.classList.remove('armed');
+        }
+        armado = false;
+    });
+})();
 
 // Enviar solicitud (contado o fiado)
 $('#btnEnviarPedido').on('click', function () {
