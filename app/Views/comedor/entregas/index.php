@@ -426,10 +426,10 @@ $(document).on('click', '.btn-entregar', function () {
     pedidoActivo = datosActuales.find(p => p.id == id);
     if (!pedidoActivo) return;
 
-    // Si este pedido ya tuvo una entrega previa (items de otro horario entregados antes), el
-    // pago ya quedó resuelto en ese momento: aquí solo se confirma la entrega de lo que falta,
-    // sin volver a preguntar tipo de pago, comensal ni vuelto.
-    if (pedidoActivo.ya_entregado_parcial) {
+    // Los pedidos tomados en el POS (origen "cajero") ya resolvieron el pago completo desde que
+    // se crearon: aquí solo se confirma la entrega física, sin volver a cobrar ni preguntar tipo
+    // de pago, comensal ni vuelto.
+    if (pedidoActivo.origen === 'cajero') {
         const itemsTxt = pedidoActivo.items.map(it => `${parseFloat(it.cantidad)}× ${it.nombre}`).join(', ');
         Swal.fire({
             title: '¿Entregar estos items?',
@@ -455,9 +455,15 @@ $(document).on('click', '.btn-entregar', function () {
         return;
     }
 
+    const montoEvento = parseFloat(pedidoActivo.subtotal_llamado);
+    const esParteDelTotal = Math.abs(montoEvento - parseFloat(pedidoActivo.total)) > 0.009;
+
     $('#entCliente').text(pedidoActivo.cliente_nombre);
     $('#entNumero').text(pedidoActivo.numero_formateado);
-    $('#entTotal').text('Total: $' + parseFloat(pedidoActivo.total).toFixed(2));
+    $('#entTotal').text(
+        'A cobrar ahora: $' + montoEvento.toFixed(2) +
+        (esParteDelTotal ? ' (de $' + parseFloat(pedidoActivo.total).toFixed(2) + ' del pedido)' : '')
+    );
 
     const esFiado = pedidoActivo.tipo_pago === 'fiado';
     $('.tipo-ent-btn').removeClass('active');
@@ -465,9 +471,7 @@ $(document).on('click', '.btn-entregar', function () {
 
     mostrarClienteFiadoEnt(esFiado);
     $('#entContadoRow').toggle(!esFiado);
-    const montoPrevio = parseFloat(pedidoActivo.monto_recibido);
-    const total = parseFloat(pedidoActivo.total);
-    $('#entMontoRecibido').val(montoPrevio && montoPrevio > total ? montoPrevio : total);
+    $('#entMontoRecibido').val(montoEvento);
     actualizarCambioEntrega();
 
     $('#modalEntregar').modal('show');
@@ -510,10 +514,12 @@ $('#btnCambiarClienteEnt').on('click', function () {
 });
 
 // Calcula el cambio en vivo y muestra el checkbox de "vuelto pendiente" solo si hay cambio.
+// El cambio se calcula sobre lo que se está cobrando AHORA (este llamado), no sobre el total
+// del pedido completo si todavía hay otros horarios pendientes de entregar.
 function actualizarCambioEntrega() {
-    const total = parseFloat(pedidoActivo?.total) || 0;
+    const montoEvento = parseFloat(pedidoActivo?.subtotal_llamado) || 0;
     const monto = parseFloat($('#entMontoRecibido').val());
-    const cambio = (monto || 0) - total;
+    const cambio = (monto || 0) - montoEvento;
 
     if (!monto || cambio <= 0) {
         $('#entCambioTexto').text(monto ? 'Pago exacto.' : '');
@@ -637,8 +643,8 @@ $('#btnConfirmarEntrega').on('click', function () {
     let vueltoPendiente = 0;
     if (tipoPago === 'contado') {
         const monto = parseFloat($('#entMontoRecibido').val());
-        if (!monto || monto < parseFloat(pedidoActivo.total)) {
-            Swal.fire('Monto inválido', 'Ingresa con cuánto pagó (debe ser mayor o igual al total).', 'warning');
+        if (!monto || monto < parseFloat(pedidoActivo.subtotal_llamado)) {
+            Swal.fire('Monto inválido', 'Ingresa con cuánto pagó (debe ser mayor o igual a lo que se le está entregando ahora).', 'warning');
             return;
         }
         montoRecibido = monto;

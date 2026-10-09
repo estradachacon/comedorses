@@ -152,17 +152,29 @@ $badgeClass = $badgeMap[$pedido['estado']] ?? 'light';
                 </div>
                 <div class="ver-card-body">
                     <?php foreach ($detalles as $d): ?>
-                    <div class="item-row">
+                    <div class="item-row<?= !empty($d['rechazado_at']) ? ' text-muted' : '' ?>">
                         <div style="flex:1;min-width:0;">
-                            <div class="item-name">
+                            <div class="item-name" style="<?= !empty($d['rechazado_at']) ? 'text-decoration:line-through;' : '' ?>">
                                 <?= esc($d['item_nombre']) ?>
                                 <?php if (!empty($d['servicio'])): ?>
                                 <span class="badge badge-light text-muted" style="font-size:.68rem;font-weight:600;"><?= etiquetaServicioComedor($d['servicio']) ?></span>
                                 <?php endif; ?>
+                                <?php if (!empty($d['entregado_at'])): ?>
+                                <span class="badge badge-success" style="font-size:.68rem;"><i class="fa-solid fa-check mr-1"></i>Entregado</span>
+                                <?php elseif (!empty($d['rechazado_at'])): ?>
+                                <span class="badge badge-danger" style="font-size:.68rem;"><i class="fa-solid fa-ban mr-1"></i>Rechazado</span>
+                                <?php endif; ?>
                             </div>
                             <div class="item-qty"><?= (int)$d['cantidad'] ?> × $<?= number_format($d['precio_unitario'], 2) ?></div>
                         </div>
-                        <div class="item-sub">$<?= number_format($d['subtotal'], 2) ?></div>
+                        <div class="item-sub" style="display:flex;align-items:center;gap:8px;">
+                            $<?= number_format($d['subtotal'], 2) ?>
+                            <?php if (empty($d['entregado_at']) && empty($d['rechazado_at']) && !$pedido['anulado'] && tienePermiso('anular_pedido_comedor')): ?>
+                            <button type="button" class="btn btn-sm btn-outline-danger btn-rechazar-item" style="padding:1px 7px;font-size:.72rem;" data-id="<?= $d['id'] ?>">
+                                Rechazar
+                            </button>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     <?php endforeach; ?>
 
@@ -364,6 +376,35 @@ $('#btnConfirmarVerOk').on('click', function () {
     });
 });
 <?php endif; ?>
+
+// Rechazar un item puntual (todavía no entregado) sin anular el pedido completo.
+$(document).on('click', '.btn-rechazar-item', function () {
+    const btn = $(this);
+    Swal.fire({
+        title: '¿Rechazar este item?',
+        text: 'Se descuenta del total del pedido y ya no aparecerá en /comedor/entregas.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, rechazar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#dc3545',
+    }).then(r => {
+        if (!r.isConfirmed) return;
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin"></i>');
+        $.post('/comedor/pedidos/rechazar-item/' + btn.data('id'), {
+            '<?= csrf_token() ?>': '<?= csrf_hash() ?>',
+        }).done(res => {
+            if (res.ok) location.reload();
+            else {
+                Swal.fire('Error', res.msg, 'error');
+                btn.prop('disabled', false).text('Rechazar');
+            }
+        }).fail(() => {
+            Swal.fire('Error', 'No se pudo rechazar el item.', 'error');
+            btn.prop('disabled', false).text('Rechazar');
+        });
+    });
+});
 
 $('#btnAnularPedido').on('click', function () {
     Swal.fire({

@@ -41,14 +41,28 @@ class ComedorPublicoController extends Controller
         }
         unset($item);
 
-        // Agrupar por categoría
+        // Agrupar por categoría (vista de siempre)
         $porCategoria = [];
         foreach ($items as $item) {
             $cat = $item['categoria_nombre'] ?? 'Otros';
             $porCategoria[$cat][] = $item;
         }
 
+        // Agrupar por horario (desayuno/refrigerio/almuerzo): los que se repiten en los 3 (todo
+        // el día) van aparte, en su propio apartado, en vez de salir duplicados en cada horario.
+        $porHorario = ['desayuno' => [], 'refrigerio' => [], 'almuerzo' => [], 'todo_el_dia' => []];
+        foreach ($items as $item) {
+            if (count($item['servicios_asignados']) === 3) {
+                $porHorario['todo_el_dia'][] = $item;
+                continue;
+            }
+            foreach ($item['servicios_asignados'] as $servicio) {
+                $porHorario[$servicio][] = $item;
+            }
+        }
+
         $data['porCategoria']  = $porCategoria;
+        $data['porHorario']    = $porHorario;
         $data['fecha']         = date('Y-m-d');
         $data['menuVacio']     = empty($items);
         $data['clienteSesion'] = session()->get('comedor_cliente_logged_in')
@@ -141,7 +155,10 @@ class ComedorPublicoController extends Controller
                 'fecha'          => date('Y-m-d'),
                 'total'          => $total,
                 'monto_pagado'   => 0,
-                'saldo'          => $total,
+                // El saldo/deuda real se acumula recién cuando cada item se entrega (ver
+                // ComedorEntregasController::marcarEntregado), no de una vez al pedir: así, si
+                // un item nunca se entrega (o se rechaza), nunca llega a deberse.
+                'saldo'          => 0,
                 'tipo_pago'      => $tipoPago,
                 'monto_recibido' => $tipoPago === 'contado' ? $montoRecibido : null,
                 'estado'         => 'solicitud',
@@ -186,7 +203,9 @@ class ComedorPublicoController extends Controller
 
         $rows = $this->headModel
             ->select('comedor_pedidos_head.*, comedor_pedidos_detalles.item_nombre,
-                      comedor_pedidos_detalles.cantidad, comedor_pedidos_detalles.servicio')
+                      comedor_pedidos_detalles.cantidad, comedor_pedidos_detalles.servicio,
+                      comedor_pedidos_detalles.entregado_at AS item_entregado_at,
+                      comedor_pedidos_detalles.rechazado_at AS item_rechazado_at')
             ->join('comedor_pedidos_detalles', 'comedor_pedidos_detalles.pedido_id = comedor_pedidos_head.id', 'left')
             ->where('comedor_pedidos_head.cliente_id', $clienteId)
             ->orderBy('comedor_pedidos_head.id', 'DESC')
@@ -202,8 +221,10 @@ class ComedorPublicoController extends Controller
             }
             if ($row['item_nombre']) {
                 $agrupado[$id]['items'][] = [
-                    'texto'    => $row['cantidad'] . '× ' . $row['item_nombre'],
-                    'servicio' => $row['servicio'],
+                    'texto'        => $row['cantidad'] . '× ' . $row['item_nombre'],
+                    'servicio'     => $row['servicio'],
+                    'entregado_at' => $row['item_entregado_at'],
+                    'rechazado_at' => $row['item_rechazado_at'],
                 ];
             }
         }

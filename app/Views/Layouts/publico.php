@@ -50,6 +50,32 @@
             font-size: .72rem;
             color: rgba(255,255,255,.65);
         }
+        /* Alternar entre la vista actual (por categoría) y agrupada por horario */
+        .vista-toggle {
+            display: flex;
+            gap: 8px;
+            padding: .7rem 1rem .4rem;
+            background: #fff;
+        }
+        .vista-toggle-btn {
+            flex: 1;
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+            font-size: .78rem;
+            font-weight: 700;
+            color: #6c757d;
+            cursor: pointer;
+            background: #fff;
+            transition: all .15s;
+            text-align: center;
+        }
+        .vista-toggle-btn:active { transform: scale(.96); }
+        .vista-toggle-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
         /* Categorías como pills */
         .cat-pills {
             display: flex;

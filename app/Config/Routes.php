@@ -38,6 +38,7 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {    // Grupo del Da
     $routes->post('comedor/pedidos/guardar',                'ComedorPedidosController::guardar');
     $routes->get('comedor/pedidos/ver/(:num)',              'ComedorPedidosController::ver/$1');
     $routes->post('comedor/pedidos/anular/(:num)',          'ComedorPedidosController::anular/$1');
+    $routes->post('comedor/pedidos/rechazar-item/(:num)',   'ComedorPedidosController::rechazarItem/$1');
     $routes->get('comedor/pedidos/solicitudes',             'ComedorPedidosController::solicitudes');
     $routes->post('comedor/pedidos/confirmar/(:num)',       'ComedorPedidosController::confirmar/$1');
     $routes->get('comedor/solicitudes',                     'ComedorPedidosController::listaSolicitudes');
@@ -65,6 +66,7 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {    // Grupo del Da
     $routes->get('comedor/categorias',           'ComedorItemsController::categorias');
     $routes->post('comedor/categorias/crear',    'ComedorItemsController::crearCategoria');
     $routes->post('comedor/categorias/toggle/(:num)', 'ComedorItemsController::toggleCategoria/$1');
+    $routes->post('comedor/categorias/actualizar/(:num)', 'ComedorItemsController::actualizarCategoria/$1');
     // Clientes / comensales
     $routes->get('comedor/clientes',             'ComedorClientesController::index');
     $routes->get('comedor/clientes/nuevo',       'ComedorClientesController::nuevo');

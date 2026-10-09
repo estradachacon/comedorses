@@ -155,6 +155,9 @@ class ComedorPedidosController extends BaseController
                     'precio_unitario' => $item['precio'],
                     'cantidad'        => $item['cantidad'],
                     'subtotal'        => $item['subtotal'],
+                    // Si se registra ya como entregado, sus items tampoco deben quedar
+                    // pendientes de llamar en /comedor/entregas.
+                    'entregado_at'    => $entregarAhora ? date('Y-m-d H:i:s') : null,
                 ]);
             }
 
@@ -297,8 +300,9 @@ class ComedorPedidosController extends BaseController
         }
 
         // Confirmar solo acepta el pedido (sale de "solicitud" y entra al control del comedor).
-        // NO resuelve el pago todavía: eso se decide hasta la entrega real, en /comedor/entregas.
-        // monto_pagado/saldo quedan como se crearon (0 / total) hasta ese momento.
+        // NO resuelve el pago todavía: eso se decide hasta la entrega real, en /comedor/entregas,
+        // y se acumula por partes a medida que se entrega cada item (no de una vez).
+        // monto_pagado/saldo quedan en 0 hasta ese momento.
         $this->headModel->update($id, [
             'tipo_pago'  => $tipoPago,
             'estado'     => 'pendiente',
@@ -336,6 +340,87 @@ class ComedorPedidosController extends BaseController
                     ->where('id', $pedido['cliente_id'])
                     ->set('saldo_pendiente', "GREATEST(0, saldo_pendiente - {$pedido['saldo']})", false)
                     ->update();
+            }
+
+            $db->transCommit();
+            return $this->response->setJSON(['ok' => true]);
+        } catch (\Exception $e) {
+            $db->transRollback();
+            return $this->response->setJSON(['ok' => false, 'msg' => $e->getMessage()]);
+        }
+    }
+
+    // Invalida un item puntual de un pedido que todavía no se ha entregado (p. ej. si se rechaza
+    // en cocina o ya no se quiere), sin anular el pedido completo. Baja el total del pedido y,
+    // si ese monto ya se había contabilizado como pagado/adeudado (pedidos del POS, que resuelven
+    // el pago completo desde que se crean), revierte esa parte también.
+    public function rechazarItem(int $detalleId)
+    {
+        if (!tienePermiso('anular_pedido_comedor')) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Sin permiso.']);
+        }
+
+        $detalle = $this->detalleModel->find($detalleId);
+        if (!$detalle) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Item no encontrado.']);
+        }
+        if ($detalle['entregado_at']) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Este item ya fue entregado, no se puede rechazar.']);
+        }
+        if ($detalle['rechazado_at']) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Este item ya estaba rechazado.']);
+        }
+
+        $pedido = $this->headModel->find($detalle['pedido_id']);
+        if (!$pedido || $pedido['anulado']) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Pedido no válido.']);
+        }
+
+        $db = \Config\Database::connect();
+        $db->transBegin();
+        try {
+            $this->detalleModel->update($detalleId, ['rechazado_at' => date('Y-m-d H:i:s')]);
+
+            $subtotal   = (float) $detalle['subtotal'];
+            $nuevoTotal = round((float) $pedido['total'] - $subtotal, 2);
+            $headUpdate = ['total' => $nuevoTotal];
+
+            // Los pedidos del POS (origen "cajero") resuelven el pago completo de una vez al
+            // crearse, antes de cualquier entrega: si se rechaza un item suyo sin entregar, hay
+            // que revertir esa parte ya contabilizada. Los del menú público (origen "cliente")
+            // acumulan el pago/deuda recién al entregar cada item, así que uno sin entregar nunca
+            // llegó a contarse: no hay nada que revertir.
+            if ($pedido['origen'] === 'cajero') {
+                if ($pedido['tipo_pago'] === 'contado') {
+                    $headUpdate['monto_pagado'] = round((float) $pedido['monto_pagado'] - $subtotal, 2);
+                } else {
+                    $headUpdate['saldo'] = round((float) $pedido['saldo'] - $subtotal, 2);
+                    if ($pedido['cliente_id']) {
+                        $db->table('comedor_clientes')
+                            ->where('id', $pedido['cliente_id'])
+                            ->set('saldo_pendiente', "GREATEST(0, saldo_pendiente - {$subtotal})", false)
+                            ->update();
+                    }
+                }
+            }
+
+            $this->headModel->update($pedido['id'], $headUpdate);
+
+            // Si con este rechazo ya no queda nada pendiente de entregar/decidir, el pedido se
+            // considera resuelto.
+            $pendientes = $this->detalleModel
+                ->where('pedido_id', $pedido['id'])
+                ->where('entregado_at', null)
+                ->where('rechazado_at', null)
+                ->countAllResults();
+
+            if ($pendientes === 0 && !$pedido['entregado_at']) {
+                $pedidoActualizado = $this->headModel->find($pedido['id']);
+                $this->headModel->update($pedido['id'], [
+                    'estado'        => ((float) $pedidoActualizado['saldo'] <= 0) ? 'pagado' : 'pendiente',
+                    'entregado_at'  => date('Y-m-d H:i:s'),
+                    'entregado_por' => session()->get('id'),
+                ]);
             }
 
             $db->transCommit();

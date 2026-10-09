@@ -377,6 +377,16 @@
     <div id="historialLista" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));"></div>
 </div>
 
+<!-- Vista actual (por categoría) vs. agrupado por horario -->
+<div class="vista-toggle" id="vistaToggle">
+    <button class="vista-toggle-btn active" data-vista="categoria">
+        <i class="fa-solid fa-list mr-1"></i>Como aparece ahora
+    </button>
+    <button class="vista-toggle-btn" data-vista="horario">
+        <i class="fa-solid fa-clock mr-1"></i>Por horario
+    </button>
+</div>
+
 <!-- Pills de categorías -->
 <div class="cat-pills" id="catPills">
     <button class="cat-pill active" data-cat="todos">Todos</button>
@@ -385,74 +395,37 @@
     <?php endforeach; ?>
 </div>
 
-<!-- Items del menú -->
+<!-- Items del menú: vista por categoría (la de siempre) -->
 <div id="menuContent">
     <?php foreach ($porCategoria as $categoria => $items): ?>
     <div class="cat-section" data-section="<?= esc($categoria, 'attr') ?>">
         <div class="cat-heading"><?= esc($categoria) ?></div>
-
         <?php foreach ($items as $item): ?>
-        <?php
-            $asignados       = $item['servicios_asignados'];
-            $abiertos        = $item['servicios_abiertos'];
-            $disponibleAhora = $item['disponible_ahora'];
-            $horarios        = horariosServicioComedor();
-        ?>
-        <?php $fotoUrl = !empty($item['foto']) ? base_url('upload/comedor_items/' . $item['foto']) : null; ?>
-        <div class="item-card<?= $disponibleAhora ? '' : ' item-disabled' ?>" data-id="<?= $item['item_id'] ?>"
-             data-nombre="<?= esc($item['nombre'], 'attr') ?>"
-             data-precio="<?= $item['precio'] ?>"
-             data-requiere-horario="<?= $item['requiere_horario'] ? 1 : 0 ?>"
-             data-servicios-abiertos="<?= esc(implode(',', $abiertos), 'attr') ?>">
-
-            <?php if ($fotoUrl): ?>
-            <img src="<?= esc($fotoUrl) ?>" class="item-thumb-img btn-ver-foto" alt="<?= esc($item['nombre'], 'attr') ?>" data-foto="<?= esc($fotoUrl, 'attr') ?>">
-            <?php else: ?>
-            <div class="item-emoji">🍽️</div>
-            <?php endif; ?>
-
-            <div class="item-info">
-                <div class="item-name"><?= esc($item['nombre']) ?></div>
-                <?php if (!empty($item['descripcion'])): ?>
-                    <div class="item-desc"><?= esc($item['descripcion']) ?></div>
-                <?php endif; ?>
-
-                <?php if (count($asignados) === 3): ?>
-                <div class="item-svc"><span class="svc-badge svc-badge-allday">Disponible todo el día</span></div>
-                <?php elseif (!empty($asignados)): ?>
-                <div class="item-svc">
-                    <?php if ($disponibleAhora): ?>
-                        <?php foreach ($abiertos as $s): ?>
-                        <span class="svc-badge"><?= etiquetaServicioComedor($s) ?> · hasta <?= formatearHoraComedor($horarios[$s]) ?></span>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <span class="svc-badge svc-badge-closed">
-                            Ya no disponible hoy (era <?= implode(' / ', array_map(fn ($s) => etiquetaServicioComedor($s) . ' hasta ' . formatearHoraComedor($horarios[$s]), $asignados)) ?>)
-                        </span>
-                    <?php endif; ?>
-                </div>
-                <?php endif; ?>
-
-            </div>
-
-            <div class="d-flex flex-column align-items-end">
-                <div class="item-price mb-1">$<?= number_format($item['precio'], 2) ?></div>
-                <?php if ($disponibleAhora): ?>
-                <div class="qty-slot">
-                    <button class="qty-btn add-btn btn-agregar" data-id="<?= $item['item_id'] ?>">
-                        <i class="fa-solid fa-plus" style="font-size:.8rem;"></i>
-                    </button>
-                    <div class="qty-control" id="qtyCtrl_<?= $item['item_id'] ?>">
-                        <button class="qty-btn btn-menos" data-id="<?= $item['item_id'] ?>">−</button>
-                        <span class="qty-num" id="qty_<?= $item['item_id'] ?>">1</span>
-                        <button class="qty-btn btn-mas" data-id="<?= $item['item_id'] ?>">+</button>
-                    </div>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
+        <?= view('comedor_publico/_item_card', ['item' => $item]) ?>
         <?php endforeach; ?>
     </div>
+    <?php endforeach; ?>
+</div>
+
+<!-- Pills de horario (solo aplican dentro de la vista "Por horario") -->
+<div class="cat-pills" id="horarioPills" style="display:none;">
+    <button class="cat-pill active" data-horario="todos">Todos</button>
+    <button class="cat-pill" data-horario="desayuno">Desayuno</button>
+    <button class="cat-pill" data-horario="refrigerio">Refrigerio</button>
+    <button class="cat-pill" data-horario="almuerzo">Almuerzo</button>
+</div>
+
+<!-- Items del menú: vista agrupada por horario -->
+<div id="menuContentHorario" style="display:none;">
+    <?php foreach (['desayuno' => 'Desayuno', 'refrigerio' => 'Refrigerio', 'almuerzo' => 'Almuerzo', 'todo_el_dia' => 'Todo el día'] as $servicio => $etiqueta): ?>
+    <?php if (!empty($porHorario[$servicio])): ?>
+    <div class="cat-section" data-horario-section="<?= esc($servicio, 'attr') ?>">
+        <div class="cat-heading"><?= esc($etiqueta) ?></div>
+        <?php foreach ($porHorario[$servicio] as $item): ?>
+        <?= view('comedor_publico/_item_card', ['item' => $item]) ?>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
     <?php endforeach; ?>
 </div>
 
@@ -660,11 +633,16 @@ function renderCartDrawer() {
     $('#cartDrawerItems').html(html);
 }
 
-// Mantiene sincronizados: la barra inferior, el carrito flotante y el número visible en cada card del menú.
+// Mantiene sincronizados: la barra inferior, el carrito flotante y el número visible en cada card
+// del menú. Un mismo item puede aparecer dos veces en el DOM (vista por categoría y vista por
+// horario a la vez, aunque solo una esté visible), así que todo esto opera sobre TODAS las
+// tarjetas que compartan ese data-id, no solo una.
 function syncUI() {
     renderCartBar();
     renderCartDrawer();
-    Object.keys(cart).forEach(id => $('#qty_' + id).text(cart[id].cantidad));
+    Object.keys(cart).forEach(id => {
+        $('.item-card[data-id="' + id + '"]').find('.qty-num').text(cart[id].cantidad);
+    });
 }
 
 function etiquetaHorario(s) {
@@ -709,12 +687,18 @@ function elegirHorarioComedor(abiertos) {
     });
 }
 
+// Activa/desactiva el estado "en el carrito" en TODAS las tarjetas de ese item (puede haber más
+// de una visible al mismo tiempo en el DOM entre la vista por categoría y por horario).
+function marcarCardsSeleccionadas(id, seleccionado) {
+    const cards = $('.item-card[data-id="' + id + '"]');
+    cards.toggleClass('selected', seleccionado);
+    cards.find('.qty-control').toggleClass('show', seleccionado);
+    cards.find('.btn-agregar').toggleClass('hide', seleccionado);
+}
+
 function quitarDelCarrito(id) {
     delete cart[id];
-    const card = $('[data-id="' + id + '"].item-card');
-    card.removeClass('selected');
-    $('#qtyCtrl_' + id).removeClass('show');
-    card.find('.btn-agregar').removeClass('hide');
+    marcarCardsSeleccionadas(id, false);
 }
 
 function agregarAlCarrito(card, btnEl, servicio) {
@@ -727,9 +711,7 @@ function agregarAlCarrito(card, btnEl, servicio) {
             cantidad: 1,
             servicio: servicio || null,
         };
-        card.addClass('selected');
-        $('#qtyCtrl_' + id).addClass('show');
-        $(btnEl).addClass('hide');
+        marcarCardsSeleccionadas(id, true);
     } else {
         cart[id].cantidad++;
     }
@@ -836,18 +818,35 @@ $(document).on('click', '.btn-ver-foto', function (e) {
     $('#modalFotoItem').modal('show');
 });
 
-// Filtro por categoría
-$('.cat-pill').on('click', function () {
-    $('.cat-pill').removeClass('active');
+// Filtro por categoría (vista "Como aparece ahora")
+$('#catPills').on('click', '.cat-pill', function () {
+    $('#catPills .cat-pill').removeClass('active');
     $(this).addClass('active');
     const cat = $(this).data('cat');
     if (cat === 'todos') {
-        $('.cat-section').show();
+        $('#menuContent .cat-section').show();
     } else {
-        $('.cat-section').hide();
-        $('[data-section="' + cat + '"]').show();
+        $('#menuContent .cat-section').hide();
+        $('#menuContent [data-section="' + cat + '"]').show();
     }
     $('html,body').animate({ scrollTop: $('#menuContent').offset().top - 80 }, 150);
+});
+
+// Filtro por horario (vista "Por horario"): sin selección se ve todo igual que hoy; al elegir
+// un horario específico, se muestra ese primero y, justo después, lo disponible todo el día
+// (ya que eso complementa cualquier horario que se elija).
+$('#horarioPills').on('click', '.cat-pill', function () {
+    $('#horarioPills .cat-pill').removeClass('active');
+    $(this).addClass('active');
+    const horario = $(this).data('horario');
+    if (horario === 'todos') {
+        $('#menuContentHorario .cat-section').show();
+    } else {
+        $('#menuContentHorario .cat-section').hide();
+        $('#menuContentHorario [data-horario-section="' + horario + '"]').show();
+        $('#menuContentHorario [data-horario-section="todo_el_dia"]').show();
+    }
+    $('html,body').animate({ scrollTop: $('#menuContentHorario').offset().top - 80 }, 150);
 });
 
 function cartTotal() {
@@ -1135,11 +1134,13 @@ $(document).on('click', function (e) {
 
 // Traduce el estado crudo del pedido a algo que el cliente entienda de un vistazo,
 // según en qué parte del proceso va: recién pedido, aceptado, o ya entregado (y cómo quedó el pago).
+// Un pedido con items de varios horarios se cobra/adeuda por partes a medida que se entrega
+// cada uno (no de una vez), así que el estado ya no es un simple "pagado/debe": puede tener
+// una parte pagada, otra pendiente, y otra todavía ni entregada. El desglose Total/Pagado/
+// Pendiente se muestra aparte (ver renderizado de la lista); aquí solo se resume en un badge.
 function estadoAmigablePedido(p) {
-    const total  = parseFloat(p.total) || 0;
     const pagado = parseFloat(p.monto_pagado) || 0;
     const saldo  = parseFloat(p.saldo) || 0;
-    const monto  = parseFloat(p.monto_recibido);
 
     if (p.estado === 'anulado') {
         return { texto: 'Anulado', clase: 'secondary' };
@@ -1148,25 +1149,19 @@ function estadoAmigablePedido(p) {
         return { texto: 'Pendiente', clase: 'info', nota: 'Esperando que el comedor lo confirme.', notaClase: 'muted' };
     }
     if (!p.entregado_at) {
+        if (pagado > 0 || saldo > 0) {
+            return { texto: 'Entrega parcial', clase: 'info', nota: 'Todavía falta entregarte parte del pedido.', notaClase: 'muted' };
+        }
         return { texto: 'Confirmado', clase: 'info', nota: 'Ya está en control, falta entregarlo.', notaClase: 'muted' };
     }
 
-    // Ya entregado: el badge refleja cómo quedó el pago.
-    if (p.tipo_pago === 'contado') {
-        if (monto && monto > total) {
-            return { texto: 'Pagado', clase: 'success', nota: `Te deben cambio: $${(monto - total).toFixed(2)}`, notaClase: 'info' };
-        }
-        return { texto: 'Pago completado', clase: 'success' };
-    }
-
-    // Fiado
+    // Ya se entregó todo: el badge refleja cómo quedó el pago.
     if (saldo <= 0) {
         return { texto: 'Pago completado', clase: 'success' };
     }
-    if (pagado > 0) {
-        return { texto: 'Debe parcial', clase: 'warning', nota: `Pendiente: $${saldo.toFixed(2)}`, notaClase: 'danger' };
-    }
-    return { texto: 'Se debe', clase: 'danger', nota: `Pendiente: $${saldo.toFixed(2)}`, notaClase: 'danger' };
+    return pagado > 0
+        ? { texto: 'Debe parcial', clase: 'warning' }
+        : { texto: 'Se debe', clase: 'danger' };
 }
 
 function cargarHistorial() {
@@ -1210,7 +1205,12 @@ function cargarHistorial() {
 
         let html = '';
         r.pedidos.forEach(p => {
-            const itemsTxt = (p.items || []).map(it => it.texto).join(', ');
+            // Un item rechazado ya no se va a entregar ni a cobrar: se marca tachado en la lista
+            // en vez de dejarlo ahí como si todavía estuviera en curso.
+            const itemsTxt = (p.items || []).map(it => it.rechazado_at
+                ? `<span style="text-decoration:line-through;opacity:.6;">${it.texto}</span> <span class="text-danger" style="font-size:.68rem;">rechazado</span>`
+                : it.texto
+            ).join(', ');
             const estado = estadoAmigablePedido(p);
 
             // Badge(s) del tiempo (desayuno/refrigerio/almuerzo) al que corresponde el pedido.
@@ -1222,17 +1222,31 @@ function cargarHistorial() {
                 return m ? `<span class="badge-horario-hist" style="--hbg:${m.bg};--hcolor:${m.color};"><i class="fa-solid ${m.icon}"></i>${m.label}</span>` : '';
             }).join('');
 
+            // Desglose Total/Pagado/Pendiente: con la entrega por horarios, un pedido puede
+            // quedar con una parte ya pagada y otra todavía pendiente al mismo tiempo.
+            const total  = parseFloat(p.total) || 0;
+            const pagado = parseFloat(p.monto_pagado) || 0;
+            const saldo  = parseFloat(p.saldo) || 0;
+            const mostrarDesglose = p.estado !== 'anulado' && p.estado !== 'solicitud' && (pagado > 0 || saldo > 0);
+            const desgloseHtml = mostrarDesglose ? `
+                <div class="mt-1" style="display:flex;gap:12px;font-size:.78rem;flex-wrap:wrap;">
+                    <span class="text-muted">Total <strong>$${total.toFixed(2)}</strong></span>
+                    ${pagado > 0 ? `<span class="text-success">Pagado <strong>$${pagado.toFixed(2)}</strong></span>` : ''}
+                    ${saldo > 0 ? `<span class="text-danger">Pendiente <strong>$${saldo.toFixed(2)}</strong></span>` : ''}
+                </div>` : '';
+
             html += `
             <div class="historial-pedido">
                 <div class="d-flex justify-content-between align-items-start">
                     <div style="min-width:0;">
-                        <div class="font-weight-bold" style="font-size:.9rem;">$${parseFloat(p.total).toFixed(2)}</div>
+                        <div class="font-weight-bold" style="font-size:.9rem;">$${total.toFixed(2)}</div>
                         <div class="historial-pedido-numero">${p.numero_formateado}</div>
                     </div>
                     <span class="badge badge-${estado.clase}">${estado.texto}</span>
                 </div>
                 <div class="text-muted small mt-1">${itemsTxt}</div>
                 ${horariosHtml ? `<div class="mt-1" style="display:flex;gap:4px;flex-wrap:wrap;">${horariosHtml}</div>` : ''}
+                ${desgloseHtml}
                 ${estado.nota ? `<div class="small font-weight-bold mt-1 text-${estado.notaClase}">${estado.nota}</div>` : ''}
             </div>`;
         });
@@ -1359,14 +1373,20 @@ $('#btnNuevoPedido').on('click', function () {
     $('#modalExito').modal('hide');
     $('#cartDrawer').removeClass('open');
     // Limpiar carrito
-    Object.keys(cart).forEach(id => {
-        const card = $('[data-id="' + id + '"].item-card');
-        card.removeClass('selected');
-        $('#qtyCtrl_' + id).removeClass('show');
-        card.find('.btn-agregar').removeClass('hide');
-        delete cart[id];
-    });
+    Object.keys(cart).forEach(id => quitarDelCarrito(id));
     syncUI();
+});
+
+// Alternar entre la vista por categoría (la de siempre) y la agrupada por horario.
+$('.vista-toggle-btn').on('click', function () {
+    $('.vista-toggle-btn').removeClass('active');
+    $(this).addClass('active');
+    const porHorario = $(this).data('vista') === 'horario';
+    $('#menuContentHorario').toggle(porHorario);
+    $('#menuContent').toggle(!porHorario);
+    // Cada vista tiene su propio filtro: categorías para la vista de siempre, horario para la nueva.
+    $('#catPills').toggle(!porHorario);
+    $('#horarioPills').toggle(porHorario);
 });
 </script>
 

@@ -11,7 +11,7 @@ class ComedorPedidoHeadModel extends Model
     protected $allowedFields = [
         'numero', 'cliente_id', 'cliente_nombre', 'fecha',
         'total', 'monto_pagado', 'saldo', 'tipo_pago', 'monto_recibido', 'estado', 'notas',
-        'anulado', 'anulado_por', 'fecha_anulacion', 'created_by',
+        'anulado', 'anulado_por', 'fecha_anulacion', 'created_by', 'origen',
         'entregado_at', 'entregado_por',
     ];
     protected $useTimestamps = true;
