@@ -21,8 +21,9 @@ class ComedorItemsController extends BaseController
         if (!tienePermiso('ver_items_comedor')) {
             return redirect()->back()->with('permiso_error', 'No tiene permiso para ver items.');
         }
-        $data['items'] = $this->itemModel->conCategoria();
-        $data['title'] = 'Catálogo de Items';
+        $data['items']      = $this->itemModel->conCategoria();
+        $data['categorias'] = $this->catModel->where('activa', 1)->orderBy('nombre')->findAll();
+        $data['title']      = 'Catálogo de Items';
         return view('comedor/items/index', $data);
     }
 
@@ -190,12 +191,14 @@ class ComedorItemsController extends BaseController
     public function crearCategoria()
     {
         if (!tienePermiso('gestionar_items_comedor')) {
-            return $this->response->setStatusCode(403);
+            return $this->response->setJSON(['ok' => false, 'msg' => 'Sin permiso.']);
         }
-        $nombre = trim($this->request->getPost('nombre'));
-        if (!$nombre) return redirect()->back()->with('error', 'El nombre es requerido.');
-        $this->catModel->insert(['nombre' => $nombre, 'activa' => 1]);
-        return redirect()->to('/comedor/categorias')->with('success', 'Categoría creada.');
+        $nombre = trim((string) $this->request->getPost('nombre'));
+        if (!$nombre) {
+            return $this->response->setJSON(['ok' => false, 'msg' => 'El nombre es requerido.']);
+        }
+        $id = $this->catModel->insert(['nombre' => $nombre, 'activa' => 1]);
+        return $this->response->setJSON(['ok' => true, 'id' => $id, 'nombre' => $nombre]);
     }
 
     public function toggleCategoria(int $id)
