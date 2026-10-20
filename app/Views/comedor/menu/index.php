@@ -101,7 +101,12 @@
     <?php foreach ($porCategoria as $catNombre => $items): ?>
     <div class="mb-1">
         <div class="d-flex align-items-center mb-2 mt-1">
-            <span class="text-muted font-weight-bold mr-2"
+            <div class="custom-control custom-switch mr-2">
+                <input type="checkbox" class="custom-control-input toggle-categoria"
+                       id="cat_toggle_<?= md5($catNombre) ?>" data-categoria="<?= esc($catNombre, 'attr') ?>">
+                <label class="custom-control-label" for="cat_toggle_<?= md5($catNombre) ?>" style="cursor:pointer;"></label>
+            </div>
+            <span class="text-muted font-weight-bold"
                   style="font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;">
                 <?= esc($catNombre) ?>
             </span>
@@ -115,7 +120,7 @@
             ?>
             <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
                 <div class="card h-100 shadow-sm item-toggle-card <?= $activo ? 'border-success' : '' ?>"
-                     data-id="<?= $item['id'] ?>" data-activo="<?= $activo ? 1 : 0 ?>"
+                     data-id="<?= $item['id'] ?>" data-activo="<?= $activo ? 1 : 0 ?>" data-categoria="<?= esc($catNombre, 'attr') ?>"
                      data-nombre="<?= esc($item['nombre'], 'attr') ?>"
                      data-descripcion="<?= esc($item['descripcion'] ?? '', 'attr') ?>"
                      data-precio="<?= $item['precio'] ?>"
@@ -288,9 +293,50 @@ $(document).on('change', '.switch-item', function () {
                     .data('val', 0);
             }
             actualizarContador();
+            actualizarToggleCategoria(card.data('categoria'));
         })
         .fail(function () { chk.checked = !chk.checked; });
 });
+
+// Toggle de categoría completa
+let sincronizandoCategoria = null;
+$(document).on('change', '.toggle-categoria', function () {
+    const categoria = $(this).data('categoria');
+    const checked = this.checked;
+    const cards = $('.item-toggle-card[data-categoria="' + categoria + '"]');
+
+    sincronizandoCategoria = categoria;
+    cards.each(function () {
+        const switchItem = $(this).find('.switch-item');
+        if (switchItem.prop('checked') !== checked) {
+            switchItem.trigger('click');
+        }
+    });
+    sincronizandoCategoria = null;
+});
+
+// Actualizar el estado del toggle de categoría según el estado de sus items
+function actualizarToggleCategoria(categoria) {
+    if (sincronizandoCategoria === categoria) return;
+
+    const cards = $('.item-toggle-card[data-categoria="' + categoria + '"]');
+    if (cards.length === 0) return;
+
+    const activos = cards.filter(function () {
+        return $(this).find('.switch-item').prop('checked');
+    }).length;
+
+    const toggloCat = $('.toggle-categoria[data-categoria="' + categoria + '"]');
+    toggloCat.prop('indeterminate', false);
+
+    if (activos === 0) {
+        toggloCat.prop('checked', false);
+    } else if (activos === cards.length) {
+        toggloCat.prop('checked', true);
+    } else {
+        toggloCat.prop('indeterminate', true);
+    }
+}
 
 // Click en la card también activa el switch (excluir botones D/R/A y editar)
 $('.item-toggle-card').on('click', function (e) {
@@ -461,6 +507,12 @@ $('#btnCopiarTexto').on('click', function () {
     document.execCommand('copy');
     $(this).html('<i class="fa-solid fa-check mr-1"></i>Copiado!');
     setTimeout(() => $(this).html('<i class="fa-solid fa-copy mr-1"></i>Copiar'), 1500);
+});
+
+// Inicializar estado de toggles de categoría
+$('.toggle-categoria').each(function () {
+    const categoria = $(this).data('categoria');
+    actualizarToggleCategoria(categoria);
 });
 </script>
 
