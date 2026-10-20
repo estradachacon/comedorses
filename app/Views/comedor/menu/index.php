@@ -18,7 +18,15 @@
     border: 1px solid #e3e6ea;
     background: #f8f9fa;
 }
-.item-nombre-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-nombre-txt {
+    min-width: 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.3;
+    max-height: 2.6em;
+    overflow: hidden;
+}
 .url-publica-txt {
     min-width: 0;
     overflow: hidden;
@@ -130,7 +138,11 @@
                     <div class="card-body py-2 px-3">
                         <div class="d-flex align-items-center">
                             <img src="<?= !empty($item['foto']) ? esc(base_url('upload/comedor_items/' . $item['foto'])) : base_url('upload/no-image.png') ?>"
-                                 class="item-thumb mr-2" alt="">
+                                 class="item-thumb mr-2 btn-ver-foto-menu" alt="<?= esc($item['nombre'], 'attr') ?>"
+                                 data-foto="<?= !empty($item['foto']) ? esc(base_url('upload/comedor_items/' . $item['foto']), 'attr') : '' ?>"
+                                 data-nombre="<?= esc($item['nombre'], 'attr') ?>"
+                                 style="<?= !empty($item['foto']) ? 'cursor:pointer;' : '' ?> transition: opacity .15s;"
+                                 title="Ver foto">
                             <div class="mr-2">
                                 <div class="custom-control custom-switch mb-0">
                                     <input type="checkbox" class="custom-control-input switch-item"
@@ -259,6 +271,19 @@
     </div>
 </div>
 
+<!-- Modal: ver foto del item en grande -->
+<div class="modal fade" id="modalVerFotoMenu" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="border-radius:14px;background:transparent;box-shadow:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                <span class="text-white font-weight-bold small" id="verFotoMenuNombre"></span>
+                <button type="button" class="close text-white" data-dismiss="modal" style="font-size:1.8rem;opacity:.9;text-shadow:0 1px 4px rgba(0,0,0,.5);">&times;</button>
+            </div>
+            <img id="imgVerFotoMenu" src="" alt="" style="width:100%;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.4);background:#fff;">
+        </div>
+    </div>
+</div>
+
 <script>
 const fecha = '<?= $fecha ?>';
 const csrfName = '<?= csrf_token() ?>';
@@ -340,13 +365,15 @@ function actualizarToggleCategoria(categoria) {
 
 // Click en la card también activa el switch (excluir botones D/R/A y editar)
 $('.item-toggle-card').on('click', function (e) {
-    if ($(e.target).closest('.btn-srv, .btn-editar-item').length) return;
+    if (modalAbierto) return;
+    if ($(e.target).closest('.btn-srv, .btn-editar-item, .btn-ver-foto-menu').length) return;
     if ($(e.target).is('input, label')) return;
     $(this).find('.switch-item').trigger('click');
 });
 
 // ── Edición rápida de item ──────────────────────────────────────────────
 let itemEditandoId = null;
+let modalAbierto = false;
 
 $(document).on('click', '.btn-editar-item', function (e) {
     e.stopPropagation();
@@ -361,6 +388,12 @@ $(document).on('click', '.btn-editar-item', function (e) {
     $('#inputFotoItem').val('');
 
     $('#modalEditarItem').modal('show');
+    modalAbierto = true;
+});
+
+// Detectar cuando el modal se cierra
+$('#modalEditarItem').on('hide.bs.modal', function () {
+    modalAbierto = false;
 });
 
 // Preview de la foto elegida
@@ -513,6 +546,22 @@ $('#btnCopiarTexto').on('click', function () {
 $('.toggle-categoria').each(function () {
     const categoria = $(this).data('categoria');
     actualizarToggleCategoria(categoria);
+});
+
+// Ver foto en modal
+$(document).on('click', '.btn-ver-foto-menu', function (e) {
+    e.stopPropagation();
+    const fotoUrl = $(this).data('foto');
+    if (!fotoUrl) return;
+    $('#imgVerFotoMenu').attr('src', fotoUrl);
+    $('#verFotoMenuNombre').text($(this).data('nombre'));
+    modalAbierto = true;
+    $('#modalVerFotoMenu').modal('show');
+});
+
+// Detectar cuando el modal de foto se cierra
+$('#modalVerFotoMenu').on('hide.bs.modal', function () {
+    modalAbierto = false;
 });
 </script>
 
