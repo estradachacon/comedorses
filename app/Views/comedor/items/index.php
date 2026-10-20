@@ -109,10 +109,10 @@
         <?php else: ?>
             <?php foreach ($items as $item): ?>
             <?php $fotoUrl = !empty($item['foto']) ? base_url('upload/comedor_items/' . $item['foto']) : null; ?>
-            <div class="item-cat-card"
+            <div class="item-cat-card" data-id="<?= $item['id'] ?>"
                  data-buscar="<?= strtolower(esc($item['nombre'], 'attr') . ' ' . esc($item['categoria_nombre'] ?? '', 'attr')) ?>">
                 <?php if ($fotoUrl): ?>
-                <img src="<?= esc($fotoUrl) ?>" class="item-cat-thumb" alt="">
+                <img src="<?= esc($fotoUrl) ?>" class="item-cat-thumb btn-ver-foto-item" alt="<?= esc($item['nombre'], 'attr') ?>" data-foto="<?= esc($fotoUrl, 'attr') ?>" data-nombre="<?= esc($item['nombre'], 'attr') ?>">
                 <?php else: ?>
                 <div class="item-cat-emoji">🍽️</div>
                 <?php endif; ?>
@@ -167,6 +167,19 @@
         <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPaginaSiguienteItems">
             <i class="fa-solid fa-chevron-right"></i>
         </button>
+    </div>
+</div>
+
+<!-- Modal: ver foto del item en grande -->
+<div class="modal fade" id="modalVerFotoItem" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="border-radius:14px;background:transparent;box-shadow:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                <span class="text-white font-weight-bold small" id="verFotoItemNombre"></span>
+                <button type="button" class="close text-white" data-dismiss="modal" style="font-size:1.8rem;opacity:.9;text-shadow:0 1px 4px rgba(0,0,0,.5);">&times;</button>
+            </div>
+            <img id="imgVerFotoItem" src="" alt="" style="width:100%;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.4);background:#fff;">
+        </div>
     </div>
 </div>
 
@@ -246,7 +259,7 @@ const PAGINA_TAMANO = 10;
 let paginaActualItems = 1;
 
 function aplicarFiltroYPaginarItems() {
-    const q = $('#buscadorItems').val().toLowerCase().trim();
+    const q = ($('#buscadorItems').val() || '').toLowerCase().trim();
     const todas = $('.item-cat-card');
     const coincidentes = todas.filter(function () {
         return !q || $(this).data('buscar').includes(q);
@@ -289,6 +302,53 @@ $('#btnPaginaSiguienteItems').on('click', function () {
 });
 
 aplicarFiltroYPaginarItems();
+
+// Ver la foto en grande sin entrar al formulario de edición.
+$(document).on('click', '.btn-ver-foto-item', function (e) {
+    e.stopPropagation();
+    $('#imgVerFotoItem').attr('src', $(this).data('foto'));
+    $('#verFotoItemNombre').text($(this).data('nombre'));
+    $('#modalVerFotoItem').modal('show');
+});
+
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+}
+
+// Reconstruye la tarjeta completa de un item (misma estructura que el parcial del servidor),
+// para reemplazar la existente tras editar sin tener que recargar toda la página.
+function construirTarjetaItem(item, categoriaNombre) {
+    const fotoHtml = item.foto_url
+        ? `<img src="${escapeHtml(item.foto_url)}" class="item-cat-thumb btn-ver-foto-item" alt="${escapeHtml(item.nombre)}" data-foto="${escapeHtml(item.foto_url)}" data-nombre="${escapeHtml(item.nombre)}">`
+        : `<div class="item-cat-emoji">🍽️</div>`;
+    const descHtml = item.descripcion
+        ? `<div class="item-cat-desc">${escapeHtml(item.descripcion)}</div>`
+        : '';
+    const buscarAttr = (item.nombre + ' ' + (categoriaNombre || '')).toLowerCase();
+
+    return `<div class="item-cat-card" data-id="${item.id}" data-buscar="${escapeHtml(buscarAttr)}">
+        ${fotoHtml}
+        <div class="item-cat-info" style="min-width:0;flex:1;">
+            <div class="item-cat-nombre">${escapeHtml(item.nombre)}</div>
+            ${descHtml}
+            <div class="item-cat-cat">${escapeHtml(categoriaNombre || '—')}</div>
+        </div>
+        <div class="item-cat-acciones">
+            <div class="item-cat-precio">$${parseFloat(item.precio).toFixed(2)}</div>
+            <div class="custom-control custom-switch d-inline-block mb-0">
+                <input type="checkbox" class="custom-control-input toggle-disponible" id="disp_${item.id}" data-id="${item.id}" ${item.disponible ? 'checked' : ''}>
+                <label class="custom-control-label" for="disp_${item.id}"></label>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-primary btn-editar-item-cat" style="padding:3px 10px;"
+                data-id="${item.id}" data-nombre="${escapeHtml(item.nombre)}" data-descripcion="${escapeHtml(item.descripcion || '')}"
+                data-precio="${item.precio}" data-categoria-id="${item.categoria_id || ''}" data-foto-url="${escapeHtml(item.foto_url || '')}">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+        </div>
+    </div>`;
+}
 
 // ── Edición rápida de item (modal) ──────────────────────────────────────
 let itemEditandoId = null;
@@ -351,9 +411,16 @@ $('#btnGuardarEdicionItemCat').on('click', function () {
         contentType: false,
     }).done(function (r) {
         if (!r.ok) { Swal.fire('Error', r.msg, 'error'); return; }
+
+        const categoriaIdSel   = $('#editItemCategoriaId').val();
+        const categoriaNombre  = categoriaIdSel ? $('#editItemCategoriaId option:selected').text().trim() : null;
+        const nuevaTarjeta      = construirTarjetaItem(r.item, categoriaNombre);
+
+        $('.item-cat-card[data-id="' + itemEditandoId + '"]').replaceWith(nuevaTarjeta);
+        aplicarFiltroYPaginarItems(); // reaplica filtro/paginado: cambió lo buscable y la posición puede ya no calzar con la página actual
+
         $('#modalEditarItemCat').modal('hide');
-        Swal.fire({ icon: 'success', title: 'Item actualizado', timer: 900, showConfirmButton: false })
-            .then(() => location.reload());
+        Swal.fire({ icon: 'success', title: 'Item actualizado', timer: 900, showConfirmButton: false });
     }).fail(function () {
         Swal.fire('Error', 'No se pudo guardar el item.', 'error');
     }).always(function () {

@@ -172,6 +172,30 @@ const csrfName = '<?= csrf_token() ?>';
 const csrfHash = '<?= csrf_hash() ?>';
 let catEditandoId = null;
 
+function escapeHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+}
+
+// Misma estructura que el parcial del servidor, para poder agregar una categoría nueva sin
+// tener que recargar toda la página.
+function construirTarjetaCategoria(id, nombre) {
+    return `<div class="cat-card" id="catCard_${id}" data-buscar="${escapeHtml(nombre.toLowerCase())}">
+        <span class="cat-card-nombre" id="catNombre_${id}">${escapeHtml(nombre)}</span>
+        <div class="cat-card-acciones">
+            <button type="button" class="btn btn-sm btn-outline-primary btn-editar-cat"
+                data-id="${id}" data-nombre="${escapeHtml(nombre)}" style="padding:3px 10px;">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+            <div class="custom-control custom-switch d-inline-block">
+                <input type="checkbox" class="custom-control-input toggle-cat" id="cat_${id}" data-id="${id}" checked>
+                <label class="custom-control-label" for="cat_${id}"></label>
+            </div>
+        </div>
+    </div>`;
+}
+
 $(document).on('change', '.toggle-cat', function () {
     const id  = $(this).data('id');
     const chk = this;
@@ -185,7 +209,7 @@ const PAGINA_TAMANO_CAT = 10;
 let paginaActualCat = 1;
 
 function aplicarFiltroYPaginarCat() {
-    const q = $('#buscadorCategorias').val().toLowerCase().trim();
+    const q = ($('#buscadorCategorias').val() || '').toLowerCase().trim();
     const todas = $('.cat-card');
     const coincidentes = todas.filter(function () {
         return !q || $(this).data('buscar').includes(q);
@@ -245,7 +269,14 @@ $('#btnGuardarNuevaCat').on('click', function () {
     $.post('/comedor/categorias/crear', { [csrfName]: csrfHash, nombre })
         .done(function (r) {
             if (!r.ok) { Swal.fire('Error', r.msg, 'error'); return; }
-            location.reload();
+
+            $('#listaCategorias .text-center.text-muted').remove(); // "Sin categorías todavía", si estaba
+            $('#listaCategorias').append(construirTarjetaCategoria(r.id, r.nombre));
+            paginaActualCat = Math.ceil($('.cat-card').length / PAGINA_TAMANO_CAT); // ir a la última página para verla
+            aplicarFiltroYPaginarCat();
+
+            $('#modalNuevaCat').modal('hide');
+            Swal.fire({ icon: 'success', title: 'Categoría creada', timer: 900, showConfirmButton: false });
         })
         .fail(function () {
             Swal.fire('Error', 'No se pudo crear la categoría.', 'error');
